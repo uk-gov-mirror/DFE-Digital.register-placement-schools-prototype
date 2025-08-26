@@ -29,6 +29,7 @@ const passport = {
 /// Controller modules
 /// ------------------------------------------------------------------------ ///
 const contentController = require('./controllers/content')
+const feedbackController = require('./controllers/feedback')
 const searchController = require('./controllers/search')
 const supportAccountController = require('./controllers/support/account')
 const supportPlacementSchoolController = require('./controllers/support/placementSchool')
@@ -133,6 +134,18 @@ router.get('/support/users', checkIsAuthenticated, supportUserController.usersLi
 /// ------------------------------------------------------------------------ ///
 
 router.get('/support/account', checkIsAuthenticated, supportAccountController.userAccount)
+
+/// ------------------------------------------------------------------------ ///
+/// FEEDBACK ROUTES
+/// ------------------------------------------------------------------------ ///
+
+router.get('/feedback', feedbackController.newFeedback_get)
+router.post('/feedback', feedbackController.newFeedback_post)
+
+router.get('/feedback/check', feedbackController.newFeedbackCheck_get)
+router.post('/feedback/check', feedbackController.newFeedbackCheck_post)
+
+router.get('/feedback/confirmation', feedbackController.newFeedbackConfirmation_get)
 
 /// ------------------------------------------------------------------------ ///
 /// AUTOCOMPLETE ROUTES
