@@ -29,6 +29,7 @@ const passport = {
 /// Controller modules
 /// ------------------------------------------------------------------------ ///
 const contentController = require('./controllers/content')
+const errorController = require('./controllers/error')
 const feedbackController = require('./controllers/feedback')
 const searchController = require('./controllers/search')
 const supportAccountController = require('./controllers/support/account')
@@ -148,16 +149,6 @@ router.post('/feedback/check', feedbackController.newFeedbackCheck_post)
 router.get('/feedback/confirmation', feedbackController.newFeedbackConfirmation_get)
 
 /// ------------------------------------------------------------------------ ///
-/// AUTOCOMPLETE ROUTES
-/// ------------------------------------------------------------------------ ///
-
-router.get('/location-suggestions', searchController.locationSuggestions_json)
-
-router.get('/provider-suggestions', searchController.providerSuggestions_json)
-
-router.get('/school-suggestions', searchController.schoolSuggestions_json)
-
-/// ------------------------------------------------------------------------ ///
 /// GENERAL ROUTES
 /// ------------------------------------------------------------------------ ///
 
@@ -166,6 +157,32 @@ router.get('/accessibility', contentController.accessibility)
 router.get('/cookies', contentController.cookies)
 
 router.get('/privacy', contentController.privacy)
+
+router.get('/404', checkIsAuthenticated, errorController.pageNotFound)
+router.get('/page-not-found', checkIsAuthenticated, errorController.pageNotFound)
+
+router.get('/500', errorController.unexpectedError)
+router.get('/server-error', errorController.unexpectedError)
+
+router.get('/503', errorController.serviceUnavailable)
+router.get('/service-unavailable', errorController.serviceUnavailable)
+
+router.get('/unauthorised', errorController.unauthorised)
+router.get('/account-not-authorised', errorController.unauthorised)
+
+router.get('/account-not-recognised', errorController.accountNotRecognised)
+
+router.get('/account-no-organisation', errorController.accountNoOrganisation)
+
+/// ------------------------------------------------------------------------ ///
+/// AUTOCOMPLETE ROUTES
+/// ------------------------------------------------------------------------ ///
+
+router.get('/location-suggestions', searchController.locationSuggestions_json)
+
+router.get('/provider-suggestions', searchController.providerSuggestions_json)
+
+router.get('/school-suggestions', searchController.schoolSuggestions_json)
 
 /// ------------------------------------------------------------------------ ///
 ///
