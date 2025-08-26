@@ -28,6 +28,7 @@ const passport = {
 /// ------------------------------------------------------------------------ ///
 /// Controller modules
 /// ------------------------------------------------------------------------ ///
+const contentController = require('./controllers/content')
 const searchController = require('./controllers/search')
 const supportAccountController = require('./controllers/support/account')
 const supportPlacementSchoolController = require('./controllers/support/placementSchool')
@@ -142,6 +143,16 @@ router.get('/location-suggestions', searchController.locationSuggestions_json)
 router.get('/provider-suggestions', searchController.providerSuggestions_json)
 
 router.get('/school-suggestions', searchController.schoolSuggestions_json)
+
+/// ------------------------------------------------------------------------ ///
+/// GENERAL ROUTES
+/// ------------------------------------------------------------------------ ///
+
+router.get('/accessibility', contentController.accessibility)
+
+router.get('/cookies', contentController.cookies)
+
+router.get('/privacy', contentController.privacy)
 
 /// ------------------------------------------------------------------------ ///
 ///
