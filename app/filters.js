@@ -13,7 +13,12 @@ const {
   getDateParts,
   getDay,
   getMonth,
-  getYear } = require('./helpers/date')
+  getYear
+} = require('./helpers/date')
+
+const {
+  getFeedbackRatingLabel
+} = require('./helpers/content')
 
 /* ------------------------------------------------------------------
   numeral filter for use in Nunjucks
@@ -98,6 +103,13 @@ addFilter('getMonth', getMonth)
  outputs: 1970
 ------------------------------------------------------------------ */
 addFilter('getYear', getYear)
+
+/* ------------------------------------------------------------------
+utility function to get the feedback rating label
+example: {{ 5 | getFeedbackRatingLabel }}
+outputs: "Very satisfiled"
+------------------------------------------------------------------ */
+addFilter('getFeedbackRatingLabel', getFeedbackRatingLabel)
 
 /* ------------------------------------------------------------------
 utility function to parse markdown as HTML
