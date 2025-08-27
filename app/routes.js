@@ -86,6 +86,12 @@ router.post('/search/school', checkIsAuthenticated, searchController.searchSchoo
 router.get('/search/provider', checkIsAuthenticated, searchController.searchProvider_get)
 router.post('/search/provider', checkIsAuthenticated, searchController.searchProvider_post)
 
+router.get('/results/remove-region-filter/:region', checkIsAuthenticated, searchController.removeRegionFilter)
+
+router.get('/results/remove-all-filters', checkIsAuthenticated, searchController.removeAllFilters)
+
+router.get('/results/remove-keyword-search', checkIsAuthenticated, searchController.removeKeywordSearch)
+
 router.get('/results', checkIsAuthenticated, searchController.results_get)
 
 /// ------------------------------------------------------------------------ ///
