@@ -19,6 +19,22 @@
       <a class="govuk-link" href="{{ actions.search }}">Search again</a>
     </p>
 
+  </div>
+</div>
+
+<div class="app-filter-layout">
+  <div class="app-filter-layout__filter">
+    {% include "./_filter-panel.njk" %}
+  </div>
+
+  <div class="app-filter-layout__content">
+
+    <div class="app-action-bar">
+      <div class="app-action-bar__filter"></div>
+    </div>
+
+    {% include "./_search-panel.njk" %}
+
     {% if placements.length %}
 
       {% for placement in placements %}

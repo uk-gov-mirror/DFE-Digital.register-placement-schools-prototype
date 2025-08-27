@@ -15,6 +15,22 @@
       <a class="govuk-link" href="{{ actions.search }}">Search again</a>
     </p>
 
+  </div>
+</div>
+
+<div class="app-filter-layout">
+  <div class="app-filter-layout__filter">
+    {% include "./_filter-panel.njk" %}
+  </div>
+
+  <div class="app-filter-layout__content">
+
+    <div class="app-action-bar">
+      <div class="app-action-bar__filter"></div>
+    </div>
+
+    {% include "./_search-panel.njk" %}
+
     {% if placements.length %}
 
       {% for placement in placements %}
@@ -136,6 +152,14 @@
               value: {
                 html: addressHtml if (placement.school.address.line1.length and placement.school.address.town.length and placement.school.address.postcode.length) else "Not known",
                 classes: "govuk-hint" if not (placement.school.address.line1.length and placement.school.address.town.length and placement.school.address.postcode.length)
+              }
+            },
+            {
+              key: {
+                text: "Region"
+              },
+              value: {
+                text: "REGION NAME"
               }
             },
             {
