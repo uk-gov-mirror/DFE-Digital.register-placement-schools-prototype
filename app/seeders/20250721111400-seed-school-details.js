@@ -38,6 +38,7 @@ module.exports = {
           id: detailId,
           school_id: school.id,
           establishment_number: nullIfEmpty(school.establishment_number),
+          region_code: nullIfEmpty(school.region_code),
           local_authority_code: nullIfEmpty(school.local_authority_code),
           statutory_low_age: nullIfEmpty(school.statutory_low_age),
           statutory_high_age: nullIfEmpty(school.statutory_high_age),
