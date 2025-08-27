@@ -113,24 +113,42 @@
   {% endif %}
 {% endif %}
 
-{% if filterSchoolRegionItems.length %}
-  {{ govukCheckboxes({
-    id: "filters-school-region",
-    name: "filters[schoolRegion]",
-    fieldset: {
-      legend: {
-        html: 'Region<span class="govuk-visually-hidden"> filter</span>',
-        isPageHeading: false,
-        classes: "govuk-fieldset__legend--s"
-      }
-    },
-    formGroup: {
-      classes: "app-filter__group"
-    },
-    classes: "govuk-checkboxes--small",
-    values: selectedSchoolRegion,
-    items: filterSchoolRegionItems
-  }) }}
+{% if filterRegionItems.length %}
+  {% if filterRegionItems.length > 5 %}
+    {{ appCheckboxFilter({
+      id: "filters-region",
+      name: "filters[region]",
+      fieldset: {
+        legend: {
+          html: 'Region<span class="govuk-visually-hidden"> filter</span>',
+          isPageHeading: false,
+          classes: "govuk-fieldset__legend--s"
+        }
+      },
+      values: selectedregion,
+      items: filterRegionItems,
+      showSelectedTags: false,
+      classes: "govuk-!-margin-bottom-7"
+    }) }}
+  {% else %}
+    {{ govukCheckboxes({
+      id: "filters-region",
+      name: "filters[region]",
+      fieldset: {
+        legend: {
+          html: 'Region<span class="govuk-visually-hidden"> filter</span>',
+          isPageHeading: false,
+          classes: "govuk-fieldset__legend--s"
+        }
+      },
+      formGroup: {
+        classes: "app-filter__group"
+      },
+      classes: "govuk-checkboxes--small",
+      values: selectedregion,
+      items: filterRegionItems
+    }) }}
+  {% endif %}
 {% endif %}
 
 {% if filterSchoolStatusItems.length %}
