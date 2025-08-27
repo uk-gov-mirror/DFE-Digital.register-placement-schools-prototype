@@ -3,6 +3,7 @@ const {
   AcademicYear,
   PlacementSchool,
   Provider,
+  Region,
   School,
   SchoolAddress,
   SchoolAdmissionsPolicy,
@@ -243,7 +244,7 @@ const getPlacementSchoolsForProvider = async (providerId, page = 1, limit = 25) 
     const provider = await Provider.findByPk(providerId)
     if (!provider) return null
 
-    const allPlacements = await PlacementSchool.findAll({
+    const placementRows = await PlacementSchool.findAll({
       where: { providerId },
       include: [
         { model: AcademicYear, as: 'academicYear', attributes: ['name'] },
@@ -256,7 +257,15 @@ const getPlacementSchoolsForProvider = async (providerId, page = 1, limit = 25) 
             { model: SchoolType, as: 'schoolType' },
             { model: SchoolGroup, as: 'schoolGroup' },
             { model: SchoolStatus, as: 'schoolStatus' },
-            { model: SchoolEducationPhase, as: 'schoolEducationPhase' }
+            { model: SchoolEducationPhase, as: 'schoolEducationPhase' },
+            {
+              model: SchoolDetail,
+              as: 'schoolDetail',
+              attributes: ['regionCode'],
+              include: [
+                { model: Region, as: 'region', attributes: ['name'] }
+              ]
+            }
           ],
           required: true
         }
@@ -265,7 +274,7 @@ const getPlacementSchoolsForProvider = async (providerId, page = 1, limit = 25) 
 
     const schoolMap = new Map()
 
-    for (const placement of allPlacements) {
+    for (const placement of placementRows) {
       const s = placement.school
       if (!schoolMap.has(s.id)) {
         schoolMap.set(s.id, {
@@ -278,7 +287,8 @@ const getPlacementSchoolsForProvider = async (providerId, page = 1, limit = 25) 
             type: s.schoolType?.name || null,
             group: s.schoolGroup?.name || null,
             status: s.schoolStatus?.name || null,
-            educationPhase: s.schoolEducationPhase?.name || null
+            educationPhase: s.schoolEducationPhase?.name || null,
+            region: s.schoolDetail?.region?.name || null
           },
           academicYears: [placement.academicYear.name]
         })
