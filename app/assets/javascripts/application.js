@@ -59,4 +59,13 @@ window.GOVUKPrototypeKit.documentReady(() => {
     })
     checkboxFilterSchoolEducationPhase.init()
   }
+
+  const regionContainer = document.querySelector('#filters-region')
+  if (regionContainer) {
+    const checkboxFilterRegion = new CheckboxFilter({
+      container: regionContainer,
+      textBox: { label: 'Search for region' }
+    })
+    checkboxFilterRegion.init()
+  }
 })
