@@ -34,6 +34,7 @@
     {% if placements.length %}
 
       {% for placement in placements %}
+
         {% set nameHtml %}
           {# <a href="{{ actions.view }}/{{ placement.school.id }}" class="govuk-link"> #}
             {{ placement.school.name }}
@@ -159,7 +160,8 @@
                 text: "Region"
               },
               value: {
-                text: "REGION NAME"
+                text: placement.school.region if placement.school.region.length else "Not known",
+                classes: "govuk-hint" if not placement.school.region.length
               }
             },
             {
