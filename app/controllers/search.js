@@ -16,6 +16,26 @@ const {
   getPlacementSchoolsForProvider
 } = require('../services/placementSchoolSearch')
 
+const {
+  getRegionOptions,
+  getRegionLabel
+} = require('../helpers/gias')
+
+const getCheckboxValues = (name, data) => {
+  return name && (Array.isArray(name)
+    ? name
+    : [name].filter((name) => {
+        return name !== '_unchecked'
+      })) || data && (Array.isArray(data) ? data : [data])
+}
+
+const removeFilter = (value, data) => {
+  if (Array.isArray(data)) {
+    return data.filter(item => item !== value)
+  } else {
+    return null
+  }
+}
 
 exports.search_get = async (req, res) => {
   delete req.session.data.search
@@ -198,7 +218,7 @@ exports.searchProvider_post = async (req, res) => {
 
 exports.results_get = async (req, res) => {
   const q = req.session.data.q || req.query.q
-  const { search } = req.session.data
+  // const { search } = req.session.data
 
   const page = parseInt(req.query.page, 10) || 1
   const limit = parseInt(req.query.limit, 10) || 25
@@ -231,6 +251,49 @@ exports.results_get = async (req, res) => {
       }
     })
   } else if (q === 'provider') {
+    const { filters } = req.session.data
+
+    const region = null
+
+    let regions
+    if (filters?.region) {
+      regions = getCheckboxValues(region, filters.region)
+    }
+
+    const hasFilters = !!((regions?.length > 0))
+
+    let selectedFilters = null
+
+    if (hasFilters) {
+      selectedFilters = {
+        categories: []
+      }
+
+      if (regions?.length) {
+        const items = await Promise.all(
+          regions.map(async (region) => {
+            const label = await getRegionLabel(region)
+            return {
+              text: label,
+              href: `/results/remove-region-filter/${region}`
+            }
+          })
+        )
+
+        selectedFilters.categories.push({
+          heading: { text: 'Region' },
+          items: items
+        })
+      }
+    }
+
+    const filterRegionItems = await getRegionOptions()
+
+    let selectedRegion = []
+    if (filters?.region) {
+      selectedRegion = filters.region
+    }
+
     const providerId = req.session.data?.provider?.id
 
     if (!providerId) return res.redirect('/search/provider')
@@ -241,12 +304,24 @@ exports.results_get = async (req, res) => {
       provider,
       placements,
       pagination,
+      hasFilters,
+      selectedFilters,
+      filterRegionItems,
+      selectedRegion,
       actions: {
-        search: '/search'
+        view: '/results',
+        filters: {
+          apply: '/results',
+          remove: '/results/remove-all-filters'
+        },
+        search: {
+          find: '/results',
+          remove: '/results/remove-keyword-search'
+        }
       }
     })
   } else if (q === 'school') {
-    const { school } = req.session.data
+    const { search, school } = req.session.data
     const placementSchool = await getPlacementSchoolDetails(school.id)
 
     res.render('search/results-school', {
@@ -261,6 +336,25 @@ exports.results_get = async (req, res) => {
     res.send('Page not found - Results')
   }
 
+}
+
+exports.removeRegionFilter = (req, res) => {
+  const { filters } = req.session.data
+  filters.region = removeFilter(
+    req.params.region,
+    filters.region
+  )
+  res.redirect('/results')
+}
+
+exports.removeAllFilters = (req, res) => {
+  delete req.session.data.filters
+  res.redirect('/results')
+}
+
+exports.removeKeywordSearch = (req, res) => {
+  delete req.session.data.keywords
+  res.redirect('/results')
 }
 
 /// ------------------------------------------------------------------------ ///
