@@ -461,6 +461,11 @@ exports.results_get = async (req, res) => {
   } else if (q === 'provider') {
     const { filters } = req.session.data
 
+    // search
+    const keywords = req.session.data.keywords || ''
+    const hasSearch = !!((keywords))
+
+    // filters
     const region = null
     const schoolType = null
     const schoolGroup = null
@@ -635,13 +640,16 @@ exports.results_get = async (req, res) => {
       selectedSchoolType,
       selectedSchoolGroup,
       selectedSchoolStatus,
-      selectedSchoolEducationPhase
+      selectedSchoolEducationPhase,
+      keywords
     )
 
     res.render('search/results-provider', {
       provider,
       placements,
       pagination,
+      keywords,
+      hasSearch,
       hasFilters,
       selectedFilters,
       filterRegionItems,

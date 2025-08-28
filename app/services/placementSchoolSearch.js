@@ -46,7 +46,7 @@ const getDistanceInMiles = (lat1, lng1, lat2, lng2) => {
  * @param {number} [selectedSchoolGroup=null] - School group code
  * @param {number} [selectedSchoolStatus=null] - School status code
  * @param {number} [selectedSchoolEducationPhase=null] - School education phase code
- * @param {number} [keywords=null] - Keyword search
+ * @param {string} [keywords=null] - Keyword search
  * @returns {Promise<{ placements: any[], pagination: Pagination }>}
  */
 const getPlacementSchoolsByLocation = async (
@@ -281,6 +281,7 @@ const getPlacementSchoolDetails = async (schoolId) => {
  * @param {number} [selectedSchoolGroup=null] - School group code
  * @param {number} [selectedSchoolStatus=null] - School status code
  * @param {number} [selectedSchoolEducationPhase=null] - School education phase code
+ * @param {string} [keywords=null] - Keyword search
  * @returns {Promise<Object|null>}
  */
 const getPlacementSchoolsForProvider = async (
@@ -291,7 +292,8 @@ const getPlacementSchoolsForProvider = async (
   selectedSchoolType = null,
   selectedSchoolGroup = null,
   selectedSchoolStatus = null,
-  selectedSchoolEducationPhase = null
+  selectedSchoolEducationPhase = null,
+  keywords = null
 ) => {
   try {
     const offset = (page - 1) * limit
@@ -311,6 +313,14 @@ const getPlacementSchoolsForProvider = async (
     }
     if (selectedSchoolEducationPhase?.length) {
       whereSchool.educationPhaseCode = { [Op.in]: selectedSchoolEducationPhase }
+    }
+    if (keywords && keywords.trim() !== '') {
+      const term = `%${keywords.trim()}%`
+      whereSchool[Op.or] = [
+        { name: { [Op.like]: term } },
+        { ukprn: { [Op.like]: term } },
+        { urn: { [Op.like]: term } }
+      ]
     }
 
     const whereSchoolDetail = {}
