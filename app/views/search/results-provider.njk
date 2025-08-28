@@ -182,7 +182,7 @@
       {% endfor %}
       {% include "_includes/pagination.njk" %}
     {% else %}
-      <p class="govuk-body">{{ provider.operatingName if provider.operatingName.length else "The organisation" }} has not partnerned with any schools.</p>
+      <p class="govuk-body">{{ provider.operatingName if provider.operatingName.length else "The organisation" }} has not partnerned with any schools matching your criteria.</p>
     {% endif %}
 
   </div>

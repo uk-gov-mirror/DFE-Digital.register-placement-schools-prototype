@@ -184,7 +184,7 @@
       {% endfor %}
       {% include "_includes/pagination.njk" %}
     {% else %}
-      <p class="govuk-body">There are no placement schools within {{ radius }} miles of ‘{{ location.name }}’.</p>
+      <p class="govuk-body">There are no placement schools within {{ selectedRadius }} miles of ‘{{ location.name }}’ matching your criteria.</p>
     {% endif %}
 
   </div>
