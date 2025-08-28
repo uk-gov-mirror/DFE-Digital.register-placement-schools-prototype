@@ -1,6 +1,10 @@
 {% extends "layouts/main.njk" %}
 
-{% set title = pagination.totalCount | numeral("0,0") + " placement schools near ‘" + location.name + "’" %}
+{% if pagination.totalCount %}
+  {% set title = pagination.totalCount | numeral("0,0") + " placement schools near ‘" + location.name + "’" %}
+{% else %}
+  {% set title = "No placement schools near ‘" + location.name + "’" %}
+{% endif %}
 
 {% block content %}
 
