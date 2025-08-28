@@ -1,4 +1,24 @@
 {% set filterOptionsHtml %}
+{% if filterRadiusItems.length %}
+  {{ govukRadios({
+    id: "filters-radius",
+    name: "filters[radius]",
+    fieldset: {
+      legend: {
+        html: 'Search radius<span class="govuk-visually-hidden"> filter</span>',
+        isPageHeading: false,
+        classes: "govuk-fieldset__legend--s"
+      }
+    },
+    formGroup: {
+      classes: "app-filter__group"
+    },
+    classes: "govuk-radios--small",
+    value: selectedRadius,
+    items: filterRadiusItems
+  }) }}
+{% endif %}
+
 {% if filterSchoolGroupItems.length %}
   {% if filterSchoolGroupItems.length > 5 %}
     {{ appCheckboxFilter({
