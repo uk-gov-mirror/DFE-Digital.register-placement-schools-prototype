@@ -43,6 +43,8 @@ const {
 
 exports.search_get = async (req, res) => {
   delete req.session.data.search
+  delete req.session.data.filters
+  delete req.session.data.keywords
   delete req.session.data.q
   delete req.session.data.location
   delete req.session.data.provider
