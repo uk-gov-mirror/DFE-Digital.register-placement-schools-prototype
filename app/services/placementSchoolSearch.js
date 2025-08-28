@@ -238,11 +238,41 @@ const getPlacementSchoolDetails = async (schoolId) => {
  * @param {number} [limit=25] - Results per page
  * @returns {Promise<Object|null>}
  */
-const getPlacementSchoolsForProvider = async (providerId, page = 1, limit = 25) => {
+const getPlacementSchoolsForProvider = async (
+  providerId,
+  page = 1,
+  limit = 25,
+  selectedRegion = null,
+  selectedSchoolType = null,
+  selectedSchoolGroup = null,
+  selectedSchoolStatus = null,
+  selectedSchoolEducationPhase = null
+) => {
   try {
     const offset = (page - 1) * limit
     const provider = await Provider.findByPk(providerId)
     if (!provider) return null
+
+    const whereSchool = {}
+
+    if (selectedSchoolType?.length) {
+      whereSchool.typeCode = { [Op.in]: selectedSchoolType }
+    }
+    if (selectedSchoolGroup?.length) {
+      whereSchool.groupCode = { [Op.in]: selectedSchoolGroup }
+    }
+    if (selectedSchoolStatus?.length) {
+      whereSchool.statusCode = { [Op.in]: selectedSchoolStatus }
+    }
+    if (selectedSchoolEducationPhase?.length) {
+      whereSchool.educationPhaseCode = { [Op.in]: selectedSchoolEducationPhase }
+    }
+
+    const whereSchoolDetail = {}
+
+    if (selectedRegion?.length) {
+      whereSchoolDetail.regionCode = { [Op.in]: selectedRegion }
+    }
 
     const placementRows = await PlacementSchool.findAll({
       where: { providerId },
@@ -252,6 +282,7 @@ const getPlacementSchoolsForProvider = async (providerId, page = 1, limit = 25) 
           model: School,
           as: 'school',
           attributes: ['id', 'name', 'ukprn', 'urn'],
+          where: whereSchool,
           include: [
             { model: SchoolAddress, as: 'schoolAddress' },
             { model: SchoolType, as: 'schoolType' },
@@ -262,6 +293,7 @@ const getPlacementSchoolsForProvider = async (providerId, page = 1, limit = 25) 
               model: SchoolDetail,
               as: 'schoolDetail',
               attributes: ['regionCode'],
+              where: whereSchoolDetail,
               include: [
                 { model: Region, as: 'region', attributes: ['name'] }
               ]
