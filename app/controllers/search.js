@@ -230,6 +230,11 @@ exports.results_get = async (req, res) => {
   if (q === 'location') {
     const { filters } = req.session.data
 
+    // search
+    const keywords = req.session.data.keywords || ''
+    const hasSearch = !!((keywords))
+
+    // filters
     // const radius = null
     const schoolType = null
     const schoolGroup = null
@@ -414,7 +419,8 @@ exports.results_get = async (req, res) => {
       selectedSchoolType,
       selectedSchoolGroup,
       selectedSchoolStatus,
-      selectedSchoolEducationPhase
+      selectedSchoolEducationPhase,
+      keywords
     )
 
     res.render('search/results-location', {
@@ -425,6 +431,8 @@ exports.results_get = async (req, res) => {
       },
       placements,
       pagination,
+      keywords,
+      hasSearch,
       hasFilters,
       selectedFilters,
       filterRadiusItems,
