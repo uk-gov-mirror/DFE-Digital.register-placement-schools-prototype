@@ -17,28 +17,14 @@ const {
 } = require('../services/placementSchoolSearch')
 
 const {
-  getRegionOptions,
-  getRegionLabel,
-  getSchoolTypeOptions,
-  getSchoolTypeLabel,
-  getSchoolGroupOptions,
-  getSchoolGroupLabel,
-  getSchoolStatusOptions,
-  getSchoolStatusLabel,
-  getSchoolEducationPhaseOptions,
-  getSchoolEducationPhaseLabel
-} = require('../helpers/gias')
-
-const {
-  getAcademicYearOptions,
-  getAcademicYearLabel
-} = require('../helpers/academicYear')
-
-const {
-  getCheckboxValues,
   removeFilter,
-  getRadiusOptions,
-  getRadiusLabel
+  asInt,
+  buildSelectedFilters,
+  parseFilters,
+  hasAnyFilters,
+  fetchFilterOptions,
+  locationSelectedFilterConfig,
+  providerSelectedFilterConfig
 } = require('../helpers/search')
 
 exports.search_get = async (req, res) => {
@@ -222,477 +208,191 @@ exports.searchProvider_post = async (req, res) => {
   }
 }
 
-exports.results_get = async (req, res) => {
-  const q = req.session.data.q || req.query.q
-  // const { search } = req.session.data
+/**
+ * GET /results
+ * Renders search results for three modes: location, provider, school.
+ * - Uses querystring `q` to switch mode.
+ * - Reads progressive-enhancement state from req.query first, then req.session.data fallback.
+ */
+exports.results_get = async (req, res, next) => {
+  try {
+    const session = req.session?.data ?? {}
+    const q = (req.query.q ?? session.q ?? '').toString()
+    const page = asInt(req.query.page, 1)
+    const limit = asInt(req.query.limit, 25)
 
-  const page = parseInt(req.query.page, 10) || 1
-  const limit = parseInt(req.query.limit, 10) || 25
+    // shared "keywords" search text
+    const keywords = (session.keywords ?? '').toString().trim()
+    const hasSearch = keywords.length > 0
 
-  if (q === 'location') {
-    const { filters } = req.session.data
+    if (q === 'location') {
+      const filters = parseFilters(session.filters)
+      // Defaults for UI state (don’t mutate filters)
+      const selectedRadius = filters.radius ?? '10'
+      const selectedSchoolType = filters.schoolType
+      const selectedSchoolGroup = filters.schoolGroup
+      const selectedSchoolStatus = filters.schoolStatus
+      const selectedSchoolEducationPhase = filters.schoolEducationPhase
 
-    // search
-    const keywords = req.session.data.keywords || ''
-    const hasSearch = !!((keywords))
+      const hasFilters = hasAnyFilters(filters, [
+        // 'radius', // re-enable when radius chips are back
+        'schoolType',
+        'schoolGroup',
+        'schoolStatus',
+        'schoolEducationPhase'
+      ])
 
-    // filters
-    // const radius = null
-    const schoolType = null
-    const schoolGroup = null
-    const schoolStatus = null
-    const schoolEducationPhase = null
+      const selectedFilters = await buildSelectedFilters(
+        locationSelectedFilterConfig(filters)
+      )
 
-    // let radii
-    // if (filters?.radius) {
-    //   radii = getCheckboxValues(radius, filters.radius)
-    // }
+      const {
+        filterRadiusItems,
+        filterSchoolTypeItems,
+        filterSchoolGroupItems,
+        filterSchoolStatusItems,
+        filterSchoolEducationPhaseItems
+      } = await fetchFilterOptions('location')
 
-    let schoolTypes
-    if (filters?.schoolType) {
-      schoolTypes = getCheckboxValues(schoolType, filters.schoolType)
-    }
+      const placeId = session.location?.id
+      if (!placeId) return res.redirect('/search/location')
 
-    let schoolGroups
-    if (filters?.schoolGroup) {
-      schoolGroups = getCheckboxValues(schoolGroup, filters.schoolGroup)
-    }
-
-    let schoolStatuses
-    if (filters?.schoolStatus) {
-      schoolStatuses = getCheckboxValues(schoolStatus, filters.schoolStatus)
-    }
-
-    let schoolEducationPhases
-    if (filters?.schoolEducationPhase) {
-      schoolEducationPhases = getCheckboxValues(schoolEducationPhase, filters.schoolEducationPhase)
-    }
-
-    const hasFilters = !!(
-      // (radii?.length > 0)
-      // ||
-      (schoolTypes?.length > 0)
-      || (schoolGroups?.length > 0)
-      || (schoolStatuses?.length > 0)
-      || (schoolEducationPhases?.length > 0)
-    )
-
-    let selectedFilters = null
-
-    if (hasFilters) {
-      selectedFilters = {
-        categories: []
+      const place = await getPlaceDetails(placeId)
+      const lat = place?.geometry?.location?.lat
+      const lng = place?.geometry?.location?.lng
+      if (!(typeof lat === 'number' && typeof lng === 'number')) {
+        return res.redirect('/search/location')
       }
 
-      // if (radii?.length) {
-      //   const items = await Promise.all(
-      //     radii.map(async (radius) => {
-      //       const label = await getRadiusLabel(radius)
-      //       return {
-      //         text: label,
-      //         href: `/results/remove-radius-filter/${radius}`
-      //       }
-      //     })
-      //   )
+      const { placements, pagination } = await getPlacementSchoolsByLocation(
+        lat,
+        lng,
+        page,
+        limit,
+        selectedRadius,
+        selectedSchoolType,
+        selectedSchoolGroup,
+        selectedSchoolStatus,
+        selectedSchoolEducationPhase,
+        keywords
+      )
 
-      //   selectedFilters.categories.push({
-      //     heading: { text: 'Search radius' },
-      //     items: items
-      //   })
-      // }
-
-      if (schoolGroups?.length) {
-        const items = await Promise.all(
-          schoolGroups.map(async (schoolGroup) => {
-            const label = await getSchoolGroupLabel(schoolGroup)
-            return {
-              text: label,
-              href: `/results/remove-school-group-filter/${schoolGroup}`
-            }
-          })
-        )
-
-        selectedFilters.categories.push({
-          heading: { text: 'School group' },
-          items: items
-        })
-      }
-
-      if (schoolTypes?.length) {
-        const items = await Promise.all(
-          schoolTypes.map(async (schoolType) => {
-            const label = await getSchoolTypeLabel(schoolType)
-            return {
-              text: label,
-              href: `/results/remove-school-type-filter/${schoolType}`
-            }
-          })
-        )
-
-        selectedFilters.categories.push({
-          heading: { text: 'School type' },
-          items: items
-        })
-      }
-
-      if (schoolEducationPhases?.length) {
-        const items = await Promise.all(
-          schoolEducationPhases.map(async (schoolEducationPhase) => {
-            const label = await getSchoolEducationPhaseLabel(schoolEducationPhase)
-            return {
-              text: label,
-              href: `/results/remove-school-education-phase-filter/${schoolEducationPhase}`
-            }
-          })
-        )
-
-        selectedFilters.categories.push({
-          heading: { text: 'School education phase' },
-          items: items
-        })
-      }
-
-      if (schoolStatuses?.length) {
-        const items = await Promise.all(
-          schoolStatuses.map(async (schoolStatus) => {
-            const label = await getSchoolStatusLabel(schoolStatus)
-            return {
-              text: label,
-              href: `/results/remove-school-status-filter/${schoolStatus}`
-            }
-          })
-        )
-
-        selectedFilters.categories.push({
-          heading: { text: 'School status' },
-          items: items
-        })
-      }
-    }
-
-    const filterRadiusItems = await getRadiusOptions()
-    const filterSchoolTypeItems = await getSchoolTypeOptions()
-    const filterSchoolGroupItems = await getSchoolGroupOptions()
-    const filterSchoolStatusItems = await getSchoolStatusOptions()
-    const filterSchoolEducationPhaseItems = await getSchoolEducationPhaseOptions()
-
-    let selectedRadius = '10'
-    if (filters?.radius) {
-      selectedRadius = filters.radius
-    }
-
-    let selectedSchoolType = []
-    if (filters?.schoolType) {
-      selectedSchoolType = filters.schoolType
-    }
-
-    let selectedSchoolGroup = []
-    if (filters?.schoolGroup) {
-      selectedSchoolGroup = filters.schoolGroup
-    }
-
-    let selectedSchoolStatus = []
-    if (filters?.schoolStatus) {
-      selectedSchoolStatus = filters.schoolStatus
-    }
-
-    let selectedSchoolEducationPhase = []
-    if (filters?.schoolEducationPhase) {
-      selectedSchoolEducationPhase = filters.schoolEducationPhase
-    }
-
-    const placeId = req.session.data?.location?.id
-
-    if (!placeId) return res.redirect('/search/location')
-
-    const place = await getPlaceDetails(placeId)
-    if (!place || !place.geometry?.location) return res.redirect('/search/location')
-
-    const searchLat = place.geometry.location.lat
-    const searchLng = place.geometry.location.lng
-    // const radiusMiles = 10
-
-    const { placements, pagination } = await getPlacementSchoolsByLocation(
-      searchLat,
-      searchLng,
-      page,
-      limit,
-      selectedRadius,
-      selectedSchoolType,
-      selectedSchoolGroup,
-      selectedSchoolStatus,
-      selectedSchoolEducationPhase,
-      keywords
-    )
-
-    res.render('search/results-location', {
-      location: {
-        name: place.name,
-        lat: searchLat,
-        lng: searchLng
-      },
-      placements,
-      pagination,
-      keywords,
-      hasSearch,
-      hasFilters,
-      selectedFilters,
-      filterRadiusItems,
-      filterSchoolTypeItems,
-      filterSchoolGroupItems,
-      filterSchoolStatusItems,
-      filterSchoolEducationPhaseItems,
-      selectedRadius,
-      selectedSchoolType,
-      selectedSchoolGroup,
-      selectedSchoolStatus,
-      selectedSchoolEducationPhase,
-      actions: {
-        newSearch: '/search',
-        view: '/results',
-        filters: {
-          apply: '/results',
-          remove: '/results/remove-all-filters'
-        },
-        search: {
-          find: '/results',
-          remove: '/results/remove-keyword-search'
+      return res.render('search/results-location', {
+        location: { name: place.name, lat, lng },
+        placements,
+        pagination,
+        keywords,
+        hasSearch,
+        hasFilters,
+        selectedFilters,
+        filterRadiusItems,
+        filterSchoolTypeItems,
+        filterSchoolGroupItems,
+        filterSchoolStatusItems,
+        filterSchoolEducationPhaseItems,
+        selectedRadius,
+        selectedSchoolType,
+        selectedSchoolGroup,
+        selectedSchoolStatus,
+        selectedSchoolEducationPhase,
+        actions: {
+          newSearch: '/search',
+          view: '/results',
+          filters: { apply: '/results', remove: '/results/remove-all-filters' },
+          search: { find: '/results', remove: '/results/remove-keyword-search' }
         }
-      }
-    })
-  } else if (q === 'provider') {
-    const { filters } = req.session.data
-
-    // search
-    const keywords = req.session.data.keywords || ''
-    const hasSearch = !!((keywords))
-
-    // filters
-    const region = null
-    const schoolType = null
-    const schoolGroup = null
-    const schoolStatus = null
-    const schoolEducationPhase = null
-
-    let regions
-    if (filters?.region) {
-      regions = getCheckboxValues(region, filters.region)
+      })
     }
 
-    let schoolTypes
-    if (filters?.schoolType) {
-      schoolTypes = getCheckboxValues(schoolType, filters.schoolType)
-    }
+    if (q === 'provider') {
+      const filters = parseFilters(session.filters)
+      const selectedRegion = filters.region
+      const selectedSchoolType = filters.schoolType
+      const selectedSchoolGroup = filters.schoolGroup
+      const selectedSchoolStatus = filters.schoolStatus
+      const selectedSchoolEducationPhase = filters.schoolEducationPhase
 
-    let schoolGroups
-    if (filters?.schoolGroup) {
-      schoolGroups = getCheckboxValues(schoolGroup, filters.schoolGroup)
-    }
+      const hasFilters = hasAnyFilters(filters, [
+        'region',
+        'schoolType',
+        'schoolGroup',
+        'schoolStatus',
+        'schoolEducationPhase'
+      ])
 
-    let schoolStatuses
-    if (filters?.schoolStatus) {
-      schoolStatuses = getCheckboxValues(schoolStatus, filters.schoolStatus)
-    }
+      const selectedFilters = await buildSelectedFilters(
+        providerSelectedFilterConfig(filters)
+      )
 
-    let schoolEducationPhases
-    if (filters?.schoolEducationPhase) {
-      schoolEducationPhases = getCheckboxValues(schoolEducationPhase, filters.schoolEducationPhase)
-    }
+      const {
+        filterRegionItems,
+        filterSchoolTypeItems,
+        filterSchoolGroupItems,
+        filterSchoolStatusItems,
+        filterSchoolEducationPhaseItems
+      } = await fetchFilterOptions('provider')
 
-    const hasFilters = !!((regions?.length > 0)
-      || (schoolTypes?.length > 0)
-      || (schoolGroups?.length > 0)
-      || (schoolStatuses?.length > 0)
-      || (schoolEducationPhases?.length > 0)
-    )
+      const providerId = session.provider?.id
+      if (!providerId) return res.redirect('/search/provider')
 
-    let selectedFilters = null
+      const { provider, placements, pagination } = await getPlacementSchoolsForProvider(
+        providerId,
+        page,
+        limit,
+        selectedRegion,
+        selectedSchoolType,
+        selectedSchoolGroup,
+        selectedSchoolStatus,
+        selectedSchoolEducationPhase,
+        keywords
+      )
 
-    if (hasFilters) {
-      selectedFilters = {
-        categories: []
-      }
-
-      if (regions?.length) {
-        const items = await Promise.all(
-          regions.map(async (region) => {
-            const label = await getRegionLabel(region)
-            return {
-              text: label,
-              href: `/results/remove-region-filter/${region}`
-            }
-          })
-        )
-
-        selectedFilters.categories.push({
-          heading: { text: 'Region' },
-          items: items
-        })
-      }
-
-      if (schoolGroups?.length) {
-        const items = await Promise.all(
-          schoolGroups.map(async (schoolGroup) => {
-            const label = await getSchoolGroupLabel(schoolGroup)
-            return {
-              text: label,
-              href: `/results/remove-school-group-filter/${schoolGroup}`
-            }
-          })
-        )
-
-        selectedFilters.categories.push({
-          heading: { text: 'School group' },
-          items: items
-        })
-      }
-
-      if (schoolTypes?.length) {
-        const items = await Promise.all(
-          schoolTypes.map(async (schoolType) => {
-            const label = await getSchoolTypeLabel(schoolType)
-            return {
-              text: label,
-              href: `/results/remove-school-type-filter/${schoolType}`
-            }
-          })
-        )
-
-        selectedFilters.categories.push({
-          heading: { text: 'School type' },
-          items: items
-        })
-      }
-
-      if (schoolEducationPhases?.length) {
-        const items = await Promise.all(
-          schoolEducationPhases.map(async (schoolEducationPhase) => {
-            const label = await getSchoolEducationPhaseLabel(schoolEducationPhase)
-            return {
-              text: label,
-              href: `/results/remove-school-education-phase-filter/${schoolEducationPhase}`
-            }
-          })
-        )
-
-        selectedFilters.categories.push({
-          heading: { text: 'School education phase' },
-          items: items
-        })
-      }
-
-      if (schoolStatuses?.length) {
-        const items = await Promise.all(
-          schoolStatuses.map(async (schoolStatus) => {
-            const label = await getSchoolStatusLabel(schoolStatus)
-            return {
-              text: label,
-              href: `/results/remove-school-status-filter/${schoolStatus}`
-            }
-          })
-        )
-
-        selectedFilters.categories.push({
-          heading: { text: 'School status' },
-          items: items
-        })
-      }
-    }
-
-    const filterRegionItems = await getRegionOptions()
-    const filterSchoolTypeItems = await getSchoolTypeOptions()
-    const filterSchoolGroupItems = await getSchoolGroupOptions()
-    const filterSchoolStatusItems = await getSchoolStatusOptions()
-    const filterSchoolEducationPhaseItems = await getSchoolEducationPhaseOptions()
-
-    let selectedRegion = []
-    if (filters?.region) {
-      selectedRegion = filters.region
-    }
-
-    let selectedSchoolType = []
-    if (filters?.schoolType) {
-      selectedSchoolType = filters.schoolType
-    }
-
-    let selectedSchoolGroup = []
-    if (filters?.schoolGroup) {
-      selectedSchoolGroup = filters.schoolGroup
-    }
-
-    let selectedSchoolStatus = []
-    if (filters?.schoolStatus) {
-      selectedSchoolStatus = filters.schoolStatus
-    }
-
-    let selectedSchoolEducationPhase = []
-    if (filters?.schoolEducationPhase) {
-      selectedSchoolEducationPhase = filters.schoolEducationPhase
-    }
-
-    const providerId = req.session.data?.provider?.id
-
-    if (!providerId) return res.redirect('/search/provider')
-
-    const { provider, placements, pagination } = await getPlacementSchoolsForProvider(
-      providerId,
-      page,
-      limit,
-      selectedRegion,
-      selectedSchoolType,
-      selectedSchoolGroup,
-      selectedSchoolStatus,
-      selectedSchoolEducationPhase,
-      keywords
-    )
-
-    res.render('search/results-provider', {
-      provider,
-      placements,
-      pagination,
-      keywords,
-      hasSearch,
-      hasFilters,
-      selectedFilters,
-      filterRegionItems,
-      filterSchoolTypeItems,
-      filterSchoolGroupItems,
-      filterSchoolStatusItems,
-      filterSchoolEducationPhaseItems,
-      selectedRegion,
-      selectedSchoolType,
-      selectedSchoolGroup,
-      selectedSchoolStatus,
-      selectedSchoolEducationPhase,
-      actions: {
-        newSearch: '/search',
-        view: '/results',
-        filters: {
-          apply: '/results',
-          remove: '/results/remove-all-filters'
-        },
-        search: {
-          find: '/results',
-          remove: '/results/remove-keyword-search'
+      return res.render('search/results-provider', {
+        provider,
+        placements,
+        pagination,
+        keywords,
+        hasSearch,
+        hasFilters,
+        selectedFilters,
+        filterRegionItems,
+        filterSchoolTypeItems,
+        filterSchoolGroupItems,
+        filterSchoolStatusItems,
+        filterSchoolEducationPhaseItems,
+        selectedRegion,
+        selectedSchoolType,
+        selectedSchoolGroup,
+        selectedSchoolStatus,
+        selectedSchoolEducationPhase,
+        actions: {
+          newSearch: '/search',
+          view: '/results',
+          filters: { apply: '/results', remove: '/results/remove-all-filters' },
+          search: { find: '/results', remove: '/results/remove-keyword-search' }
         }
-      }
-    })
-  } else if (q === 'school') {
-    const { search, school } = req.session.data
-    const placementSchool = await getPlacementSchoolDetails(school.id)
+      })
+    }
 
-    res.render('search/results-school', {
-      q,
-      search,
-      placementSchool,
-      actions: {
-        search: '/search'
-      }
-    })
-  } else {
-    res.send('Page not found - Results')
+    if (q === 'school') {
+      const { search, school } = req.session.data ?? {}
+      if (!school?.id) return res.redirect('/search/school')
+      const placementSchool = await getPlacementSchoolDetails(school.id)
+
+      return res.render('search/results-school', {
+        q,
+        search,
+        placementSchool,
+        actions: { newSearch: '/search' }
+      })
+    }
+
+    // Unknown mode
+    return res.status(404).send('Page not found - Results')
+  } catch (err) {
+    // Let your global error handler (or Express default) deal with it
+    return next(err)
   }
-
 }
 
 exports.removeRegionFilter = (req, res) => {
