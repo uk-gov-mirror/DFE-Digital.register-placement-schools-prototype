@@ -10,6 +10,7 @@
  */
 
 const {
+  Region,
   SchoolAdmissionsPolicy,
   SchoolBoarder,
   SchoolEducationPhase,
@@ -48,6 +49,9 @@ const getLabel = async (model, code) => {
 }
 
 module.exports = {
+  getRegionOptions: () => getOptions(Region),
+  getRegionLabel: (code) => getLabel(Region, code),
+
   getSchoolAdmissionsPolicyOptions: () => getOptions(SchoolAdmissionsPolicy),
   getSchoolAdmissionsPolicyLabel: (code) => getLabel(SchoolAdmissionsPolicy, code),
 

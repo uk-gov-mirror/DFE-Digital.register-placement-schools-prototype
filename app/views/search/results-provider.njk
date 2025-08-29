@@ -1,6 +1,10 @@
 {% extends "layouts/main.njk" %}
 
-{% set title = pagination.totalCount | numeral("0,0") + " placement schools for ‘" + provider.operatingName + "’" %}
+{% if pagination.totalCount %}
+  {% set title = pagination.totalCount | numeral("0,0") + " placement school" + ("s" if pagination.totalCount > 1) + " for ‘" + provider.operatingName + "’" %}
+{% else %}
+  {% set title = "No placement schools for ‘" + provider.operatingName + "’" %}
+{% endif %}
 
 {% block content %}
 
@@ -12,12 +16,29 @@
     {% include "_includes/page-heading.njk" %}
 
     <p class="govuk-body">
-      <a class="govuk-link" href="{{ actions.search }}">Search again</a>
+      <a class="govuk-link" href="{{ actions.newSearch }}">Search again</a>
     </p>
+
+  </div>
+</div>
+
+<div class="app-filter-layout">
+  <div class="app-filter-layout__filter">
+    {% include "./_filter-panel.njk" %}
+  </div>
+
+  <div class="app-filter-layout__content">
+
+    <div class="app-action-bar">
+      <div class="app-action-bar__filter"></div>
+    </div>
+
+    {% include "./_search-panel.njk" %}
 
     {% if placements.length %}
 
       {% for placement in placements %}
+
         {% set nameHtml %}
           {# <a href="{{ actions.view }}/{{ placement.school.id }}" class="govuk-link"> #}
             {{ placement.school.name }}
@@ -140,6 +161,15 @@
             },
             {
               key: {
+                text: "Region"
+              },
+              value: {
+                text: placement.school.region if placement.school.region.length else "Not known",
+                classes: "govuk-hint" if not placement.school.region.length
+              }
+            },
+            {
+              key: {
                 text: "Academic years"
               },
               value: {
@@ -152,7 +182,7 @@
       {% endfor %}
       {% include "_includes/pagination.njk" %}
     {% else %}
-      <p class="govuk-body">{{ provider.operatingName if provider.operatingName.length else "The organisation" }} has not partnerned with any schools.</p>
+      <p class="govuk-body">{{ provider.operatingName if provider.operatingName.length else "The organisation" }} has not partnerned with any schools matching your criteria.</p>
     {% endif %}
 
   </div>

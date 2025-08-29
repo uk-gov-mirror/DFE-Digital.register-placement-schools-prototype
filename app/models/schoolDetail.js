@@ -56,6 +56,12 @@ module.exports = (sequelize) => {
         as: 'urbanRuralLocation'
       })
 
+      SchoolDetail.belongsTo(models.Region, {
+        foreignKey: 'regionCode',
+        targetKey: 'code',
+        as: 'region'
+      })
+
       SchoolDetail.belongsTo(models.User, {
         foreignKey: 'createdById',
         as: 'createdByUser'
@@ -84,6 +90,10 @@ module.exports = (sequelize) => {
       establishmentNumber:  {
         type: DataTypes.STRING,
         field: 'establishment_number'
+      },
+      regionCode:  {
+        type: DataTypes.STRING,
+        field: 'region_code'
       },
       localAuthorityCode:  {
         type: DataTypes.STRING,

@@ -18,6 +18,9 @@ module.exports = {
       establishment_number: {
         type: Sequelize.STRING
       },
+      region_code: {
+        type: Sequelize.STRING
+      },
       local_authority_code: {
         type: Sequelize.STRING
       },

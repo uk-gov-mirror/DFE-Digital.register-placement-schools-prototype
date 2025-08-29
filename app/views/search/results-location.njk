@@ -1,6 +1,10 @@
 {% extends "layouts/main.njk" %}
 
-{% set title = pagination.totalCount | numeral("0,0") + " placement schools near ‘" + location.name + "’" %}
+{% if pagination.totalCount %}
+  {% set title = pagination.totalCount | numeral("0,0") + " placement school" + ("s" if pagination.totalCount > 1) + " near ‘" + location.name + "’" %}
+{% else %}
+  {% set title = "No placement schools near ‘" + location.name + "’" %}
+{% endif %}
 
 {% block content %}
 
@@ -12,12 +16,28 @@
     {% include "_includes/page-heading.njk" %}
 
     <p class="govuk-body">
-      Showing placement schools within {{ radius }} miles of ‘{{ location.name }}’.
+      Showing placement schools within {{ selectedRadius }} miles of ‘{{ location.name }}’.
     </p>
 
     <p class="govuk-body">
-      <a class="govuk-link" href="{{ actions.search }}">Search again</a>
+      <a class="govuk-link" href="{{ actions.newSearch }}">Search again</a>
     </p>
+
+  </div>
+</div>
+
+<div class="app-filter-layout">
+  <div class="app-filter-layout__filter">
+    {% include "./_filter-panel.njk" %}
+  </div>
+
+  <div class="app-filter-layout__content">
+
+    <div class="app-action-bar">
+      <div class="app-action-bar__filter"></div>
+    </div>
+
+    {% include "./_search-panel.njk" %}
 
     {% if placements.length %}
 
@@ -164,7 +184,7 @@
       {% endfor %}
       {% include "_includes/pagination.njk" %}
     {% else %}
-      <p class="govuk-body">There are no placement schools within {{ radius }} miles of ‘{{ location.name }}’.</p>
+      <p class="govuk-body">There are no placement schools within {{ selectedRadius }} miles of ‘{{ location.name }}’ matching your criteria.</p>
     {% endif %}
 
   </div>

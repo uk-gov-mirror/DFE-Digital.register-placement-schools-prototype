@@ -3,6 +3,7 @@ const {
   AcademicYear,
   PlacementSchool,
   Provider,
+  Region,
   School,
   SchoolAddress,
   SchoolAdmissionsPolicy,
@@ -40,13 +41,29 @@ const getDistanceInMiles = (lat1, lng1, lat2, lng2) => {
  * @param {number} searchLng - Longitude of the location
  * @param {number} [page=1] - Page number for pagination
  * @param {number} [limit=25] - Results per page
- * @param {number} [radiusMiles=20] - Radius in miles
+ * @param {number} [selectedRadius=10] - Radius in miles
+ * @param {number} [selectedSchoolType=null] - School type code
+ * @param {number} [selectedSchoolGroup=null] - School group code
+ * @param {number} [selectedSchoolStatus=null] - School status code
+ * @param {number} [selectedSchoolEducationPhase=null] - School education phase code
+ * @param {string} [keywords=null] - Keyword search
  * @returns {Promise<{ placements: any[], pagination: Pagination }>}
  */
-const getPlacementSchoolsByLocation = async (searchLat, searchLng, page = 1, limit = 25, radiusMiles = 20) => {
+const getPlacementSchoolsByLocation = async (
+  searchLat,
+  searchLng,
+  page = 1,
+  limit = 25,
+  selectedRadius = 10,
+  selectedSchoolType = null,
+  selectedSchoolGroup = null,
+  selectedSchoolStatus = null,
+  selectedSchoolEducationPhase = null,
+  keywords=null
+) => {
   try {
     const offset = (page - 1) * limit
-    const degreeRadius = radiusMiles / 69
+    const degreeRadius = selectedRadius / 69
 
     const candidateRows = await PlacementSchool.findAll({
       include: [{
@@ -70,6 +87,29 @@ const getPlacementSchoolsByLocation = async (searchLat, searchLng, page = 1, lim
 
     const schoolIds = [...new Set(candidateRows.map(r => r.schoolId))]
 
+    const whereSchool = {}
+
+    if (selectedSchoolType?.length) {
+      whereSchool.typeCode = { [Op.in]: selectedSchoolType }
+    }
+    if (selectedSchoolGroup?.length) {
+      whereSchool.groupCode = { [Op.in]: selectedSchoolGroup }
+    }
+    if (selectedSchoolStatus?.length) {
+      whereSchool.statusCode = { [Op.in]: selectedSchoolStatus }
+    }
+    if (selectedSchoolEducationPhase?.length) {
+      whereSchool.educationPhaseCode = { [Op.in]: selectedSchoolEducationPhase }
+    }
+    if (keywords && keywords.trim() !== '') {
+      const term = `%${keywords.trim()}%`
+      whereSchool[Op.or] = [
+        { name: { [Op.like]: term } },
+        { ukprn: { [Op.like]: term } },
+        { urn: { [Op.like]: term } }
+      ]
+    }
+
     const placementRows = await PlacementSchool.findAll({
       where: { schoolId: schoolIds },
       include: [
@@ -77,6 +117,7 @@ const getPlacementSchoolsByLocation = async (searchLat, searchLng, page = 1, lim
           model: School,
           as: 'school',
           required: true,
+          where: whereSchool,
           include: [
             { model: SchoolAddress, as: 'schoolAddress', required: true },
             { model: SchoolType, as: 'schoolType' },
@@ -97,7 +138,7 @@ const getPlacementSchoolsByLocation = async (searchLat, searchLng, page = 1, lim
       if (!a || a.latitude == null || a.longitude == null) continue
 
       const distance = getDistanceInMiles(searchLat, searchLng, a.latitude, a.longitude)
-      if (distance > radiusMiles) continue
+      if (distance > selectedRadius) continue
 
       const key = s.id
       if (!schoolMap.has(key)) {
@@ -235,15 +276,60 @@ const getPlacementSchoolDetails = async (schoolId) => {
  * @param {string} providerId - UUID of the provider
  * @param {number} [page=1] - Page number
  * @param {number} [limit=25] - Results per page
+ * @param {number} [selectedRegion=null] - UK region code
+ * @param {number} [selectedSchoolType=null] - School type code
+ * @param {number} [selectedSchoolGroup=null] - School group code
+ * @param {number} [selectedSchoolStatus=null] - School status code
+ * @param {number} [selectedSchoolEducationPhase=null] - School education phase code
+ * @param {string} [keywords=null] - Keyword search
  * @returns {Promise<Object|null>}
  */
-const getPlacementSchoolsForProvider = async (providerId, page = 1, limit = 25) => {
+const getPlacementSchoolsForProvider = async (
+  providerId,
+  page = 1,
+  limit = 25,
+  selectedRegion = null,
+  selectedSchoolType = null,
+  selectedSchoolGroup = null,
+  selectedSchoolStatus = null,
+  selectedSchoolEducationPhase = null,
+  keywords = null
+) => {
   try {
     const offset = (page - 1) * limit
     const provider = await Provider.findByPk(providerId)
     if (!provider) return null
 
-    const allPlacements = await PlacementSchool.findAll({
+    const whereSchool = {}
+
+    if (selectedSchoolType?.length) {
+      whereSchool.typeCode = { [Op.in]: selectedSchoolType }
+    }
+    if (selectedSchoolGroup?.length) {
+      whereSchool.groupCode = { [Op.in]: selectedSchoolGroup }
+    }
+    if (selectedSchoolStatus?.length) {
+      whereSchool.statusCode = { [Op.in]: selectedSchoolStatus }
+    }
+    if (selectedSchoolEducationPhase?.length) {
+      whereSchool.educationPhaseCode = { [Op.in]: selectedSchoolEducationPhase }
+    }
+    if (keywords && keywords.trim() !== '') {
+      const term = `%${keywords.trim()}%`
+      whereSchool[Op.or] = [
+        { name: { [Op.like]: term } },
+        { ukprn: { [Op.like]: term } },
+        { urn: { [Op.like]: term } }
+      ]
+    }
+
+    const whereSchoolDetail = {}
+
+    if (selectedRegion?.length) {
+      whereSchoolDetail.regionCode = { [Op.in]: selectedRegion }
+    }
+
+    const placementRows = await PlacementSchool.findAll({
       where: { providerId },
       include: [
         { model: AcademicYear, as: 'academicYear', attributes: ['name'] },
@@ -251,12 +337,22 @@ const getPlacementSchoolsForProvider = async (providerId, page = 1, limit = 25) 
           model: School,
           as: 'school',
           attributes: ['id', 'name', 'ukprn', 'urn'],
+          where: whereSchool,
           include: [
             { model: SchoolAddress, as: 'schoolAddress' },
             { model: SchoolType, as: 'schoolType' },
             { model: SchoolGroup, as: 'schoolGroup' },
             { model: SchoolStatus, as: 'schoolStatus' },
-            { model: SchoolEducationPhase, as: 'schoolEducationPhase' }
+            { model: SchoolEducationPhase, as: 'schoolEducationPhase' },
+            {
+              model: SchoolDetail,
+              as: 'schoolDetail',
+              attributes: ['regionCode'],
+              where: whereSchoolDetail,
+              include: [
+                { model: Region, as: 'region', attributes: ['name'] }
+              ]
+            }
           ],
           required: true
         }
@@ -265,7 +361,7 @@ const getPlacementSchoolsForProvider = async (providerId, page = 1, limit = 25) 
 
     const schoolMap = new Map()
 
-    for (const placement of allPlacements) {
+    for (const placement of placementRows) {
       const s = placement.school
       if (!schoolMap.has(s.id)) {
         schoolMap.set(s.id, {
@@ -278,7 +374,8 @@ const getPlacementSchoolsForProvider = async (providerId, page = 1, limit = 25) 
             type: s.schoolType?.name || null,
             group: s.schoolGroup?.name || null,
             status: s.schoolStatus?.name || null,
-            educationPhase: s.schoolEducationPhase?.name || null
+            educationPhase: s.schoolEducationPhase?.name || null,
+            region: s.schoolDetail?.region?.name || null
           },
           academicYears: [placement.academicYear.name]
         })
