@@ -37,6 +37,19 @@
       </ul>
     {% endset %}
 
+    {% set educationPhaseHtml %}
+      <ul class="govuk-list">
+        <li>
+          {{ placementSchool.educationPhase }}
+        </li>
+        {% if placementSchool.detail.statutoryLowAge and placementSchool.detail.statutoryHighAge %}
+          <li class="govuk-!-font-size-16">
+            Ages {{ placementSchool.detail.statutoryLowAge }} to {{ placementSchool.detail.statutoryHighAge }}
+          </li>
+        {% endif %}
+      </ul>
+    {% endset %}
+
     {% set addressHtml -%}
       {% if placementSchool.address.line1.length %}
         {{ placementSchool.address.line1 }}<br>
@@ -118,8 +131,7 @@
             text: "Education phase"
           },
           value: {
-            text: placementSchool.educationPhase if placementSchool.educationPhase.length else "Not known",
-            classes: "govuk-hint" if not placementSchool.educationPhase.length
+            html: educationPhaseHtml
           }
         },
         {
