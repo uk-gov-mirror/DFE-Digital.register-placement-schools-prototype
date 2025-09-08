@@ -350,7 +350,7 @@ const getPlacementSchoolsForProvider = async (
             {
               model: SchoolDetail,
               as: 'schoolDetail',
-              attributes: ['regionCode'],
+              attributes: ['regionCode', 'statutoryLowAge', 'statutoryHighAge'],
               where: whereSchoolDetail,
               include: [
                 { model: Region, as: 'region', attributes: ['name'] }
@@ -378,6 +378,8 @@ const getPlacementSchoolsForProvider = async (
             group: s.schoolGroup?.name || null,
             status: s.schoolStatus?.name || null,
             educationPhase: s.schoolEducationPhase?.name || null,
+            statutoryLowAge: s.schoolDetail.statutoryLowAge || null,
+            statutoryHighAge: s.schoolDetail.statutoryHighAge || null,
             region: s.schoolDetail?.region?.name || null
           },
           academicYears: [placement.academicYear.name]
