@@ -123,7 +123,8 @@ const getPlacementSchoolsByLocation = async (
             { model: SchoolType, as: 'schoolType' },
             { model: SchoolGroup, as: 'schoolGroup' },
             { model: SchoolStatus, as: 'schoolStatus' },
-            { model: SchoolEducationPhase, as: 'schoolEducationPhase' }
+            { model: SchoolEducationPhase, as: 'schoolEducationPhase' },
+            { model: SchoolDetail, as: 'schoolDetail' }
           ]
         },
         { model: AcademicYear, as: 'academicYear' }
@@ -152,7 +153,9 @@ const getPlacementSchoolsByLocation = async (
             type: s.schoolType?.name || null,
             group: s.schoolGroup?.name || null,
             status: s.schoolStatus?.name || null,
-            educationPhase: s.schoolEducationPhase?.name || null
+            educationPhase: s.schoolEducationPhase?.name || null,
+            statutoryLowAge: s.schoolDetail ? s.schoolDetail.statutoryLowAge : null,
+            statutoryHighAge: s.schoolDetail ? s.schoolDetail.statutoryHighAge : null
           },
           distance,
           academicYears: [p.academicYear.name]
