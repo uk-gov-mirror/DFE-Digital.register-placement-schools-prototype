@@ -262,7 +262,9 @@ const getPlacementSchoolDetails = async (schoolId) => {
         boarder: school.schoolDetail?.boarder?.name || null,
         gender: school.schoolDetail?.gender?.name || null,
         nurseryProvision: school.schoolDetail?.nurseryProvision?.name || null,
-        religiousCharacter: school.schoolDetail?.religiousCharacter?.name || null
+        religiousCharacter: school.schoolDetail?.religiousCharacter?.name || null,
+        statutoryLowAge: school.schoolDetail?.statutoryLowAge || null,
+        statutoryHighAge: school.schoolDetail?.statutoryHighAge || null
       },
       academicYears
     }
