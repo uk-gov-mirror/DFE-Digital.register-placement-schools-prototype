@@ -55,6 +55,19 @@
           </ul>
         {% endset %}
 
+        {% set educationPhaseHtml %}
+          <ul class="govuk-list">
+            <li>
+              {{ school.educationPhase }}
+            </li>
+            {% if school.statutoryLowAge and school.statutoryHighAge %}
+              <li class="govuk-!-font-size-16">
+                Ages {{ school.statutoryLowAge }} to {{ school.statutoryHighAge }}
+              </li>
+            {% endif %}
+          </ul>
+        {% endset %}
+
         {% set academicYearsHtml %}
           <ul class="govuk-list govuk-list--spaced">
             {% for year in school.academicYears %}
@@ -117,8 +130,7 @@
                 text: "Education phase"
               },
               value: {
-                text: school.educationPhase if school.educationPhase.length else "Not known",
-                classes: "govuk-hint" if not school.educationPhase.length
+                html: educationPhaseHtml
               }
             },
             {
