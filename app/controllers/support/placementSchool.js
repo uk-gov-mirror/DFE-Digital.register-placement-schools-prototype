@@ -51,6 +51,8 @@ const groupPlacementSchools = (rows) => {
         group: s.schoolGroup ? s.schoolGroup.name : null,
         status: s.schoolStatus ? s.schoolStatus.name : null,
         educationPhase: s.schoolEducationPhase ? s.schoolEducationPhase.name : null,
+        statutoryLowAge: s.schoolDetail ? s.schoolDetail.statutoryLowAge : null,
+        statutoryHighAge: s.schoolDetail ? s.schoolDetail.statutoryHighAge : null,
         academicYears: {}
       }
     }
@@ -343,7 +345,8 @@ exports.placementSchoolsList = async (req, res) => {
           { model: SchoolType, as: 'schoolType' },
           { model: SchoolGroup, as: 'schoolGroup' },
           { model: SchoolStatus, as: 'schoolStatus' },
-          { model: SchoolEducationPhase, as: 'schoolEducationPhase' }
+          { model: SchoolEducationPhase, as: 'schoolEducationPhase' },
+          { model: SchoolDetail, as: 'schoolDetail' }
         ]
       },
       { model: Provider, as: 'provider' },
