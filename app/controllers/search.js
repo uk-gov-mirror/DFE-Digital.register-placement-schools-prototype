@@ -54,7 +54,7 @@ exports.search_post = async (req, res) => {
     const error = {}
     error.fieldName = "q"
     error.href = "#q"
-    error.text = "Select find placement schools by location or training provider"
+    error.text = "Select find placement schools by location, school or training provider"
     errors.push(error)
   }
 
@@ -103,7 +103,7 @@ exports.searchLocation_post = async (req, res) => {
     const error = {}
     error.fieldName = 'location'
     error.href = '#location'
-    error.text = 'Enter city, town or postcode'
+    error.text = 'Enter a city, town or postcode'
     errors.push(error)
   }
 
@@ -146,7 +146,7 @@ exports.searchSchool_post = async (req, res) => {
     const error = {}
     error.fieldName = 'school'
     error.href = '#school'
-    error.text = 'Enter school name, UKPRN or URN'
+    error.text = 'Enter a school name, UKPRN or URN'
     errors.push(error)
   }
 
@@ -189,7 +189,7 @@ exports.searchProvider_post = async (req, res) => {
     const error = {}
     error.fieldName = 'provider'
     error.href = '#provider'
-    error.text = 'Enter provider name, UKPRN or URN'
+    error.text = 'Enter a provider name, UKPRN or URN'
     errors.push(error)
   }
 
