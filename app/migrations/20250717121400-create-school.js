@@ -68,6 +68,32 @@ module.exports = {
         comment: 'The user who made the change'
       }
     })
+
+    // indexes
+    await queryInterface.addIndex('schools', {
+      fields: ['ukprn'],
+      name: 'idx_schools_ukprn'
+    })
+    await queryInterface.addIndex('schools', {
+      fields: ['urn'],
+      name: 'idx_schools_urn'
+    })
+    await queryInterface.addIndex('schools', {
+      fields: ['type_code'],
+      name: 'idx_schools_type_code'
+    })
+    await queryInterface.addIndex('schools', {
+      fields: ['group_code'],
+      name: 'idx_schools_group_code'
+    })
+    await queryInterface.addIndex('schools', {
+      fields: ['status_code'],
+      name: 'idx_schools_status_code'
+    })
+    await queryInterface.addIndex('schools', {
+      fields: ['education_phase_code'],
+      name: 'idx_schools_education_phase_code'
+    })
   },
   async down(queryInterface, Sequelize) {
     await queryInterface.dropTable('schools')
