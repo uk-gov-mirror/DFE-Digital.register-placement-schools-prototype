@@ -59,6 +59,28 @@ module.exports = {
         comment: 'The user who made the change'
       }
     })
+
+    // indexes
+    await queryInterface.addIndex('providers', {
+      fields: ['ukprn'],
+      name: 'idx_providers_ukprn'
+    })
+    await queryInterface.addIndex('providers', {
+      fields: ['urn'],
+      name: 'idx_providers_urn'
+    })
+    await queryInterface.addIndex('providers', {
+      fields: ['type_code'],
+      name: 'idx_providers_type_code'
+    })
+    await queryInterface.addIndex('providers', {
+      fields: ['accredited_provider_number'],
+      name: 'idx_providers_accredited_provider_number'
+    })
+    await queryInterface.addIndex('providers', {
+      fields: ['provider_code'],
+      name: 'idx_providers_provider_code'
+    })
   },
   async down(queryInterface, Sequelize) {
     await queryInterface.dropTable('providers')
