@@ -49,6 +49,12 @@ module.exports = {
         comment: 'The user who made the change'
       }
     })
+
+    // indexes
+    await queryInterface.addIndex('regions', {
+      fields: ['code'],
+      name: 'idx_regions_code'
+    })
   },
   async down(queryInterface, Sequelize) {
     await queryInterface.dropTable('regions')
