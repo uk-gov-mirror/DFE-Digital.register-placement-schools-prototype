@@ -46,6 +46,12 @@ module.exports = {
         comment: 'The user who made the change'
       }
     })
+
+    // indexes
+    await queryInterface.addIndex('school_admissions_policies', {
+      fields: ['code'],
+      name: 'idx_school_admissions_policies_code'
+    })
   },
   async down(queryInterface, Sequelize) {
     await queryInterface.dropTable('school_admissions_policies')

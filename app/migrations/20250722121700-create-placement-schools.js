@@ -59,6 +59,20 @@ module.exports = {
         comment: 'The user who made the change'
       }
     })
+
+    // indexes
+    await queryInterface.addIndex('placement_schools', {
+      fields: ['school_id'],
+      name: 'idx_placement_schools_school_id'
+    })
+    await queryInterface.addIndex('placement_schools', {
+      fields: ['provider_id'],
+      name: 'idx_placement_schools_provider_id'
+    })
+    await queryInterface.addIndex('placement_schools', {
+      fields: ['academic_year_id'],
+      name: 'idx_placement_schools_academic_year_id'
+    })
   },
   async down(queryInterface, Sequelize) {
     await queryInterface.dropTable('placement_schools')
