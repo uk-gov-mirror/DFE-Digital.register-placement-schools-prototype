@@ -56,6 +56,12 @@ module.exports = {
         defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
       }
     })
+
+    // indexes
+    await queryInterface.addIndex('activity_logs', {
+      fields: ['revision_id'],
+      name: 'idx_activity_logs_revision_id'
+    })
   },
 
   async down(queryInterface, Sequelize) {
