@@ -405,6 +405,97 @@ const providerSelectedFilterConfig = (sel) => ([
   }
 ])
 
+/**
+ * Escape a value for CSV output (RFC 4180 style).
+ * - Doubles internal quotes and wraps the field in quotes if it contains a quote, comma, CR, or LF.
+ * - Null/undefined become an empty string.
+ *
+ * @param {unknown} value - Any value to serialise into a CSV cell.
+ * @returns {string} A CSV-safe string representation.
+ * @example
+ * csvEscape('ACME "Ltd", London'); // => "\"ACME \"\"Ltd\"\", London\""
+ * csvEscape(42); // => "42"
+ */
+const csvEscape = (value) => {
+  if (value === null || value === undefined) return ''
+  const str = String(value)
+  return (/[",\r\n]/.test(str)) ? `"${str.replace(/"/g, '""')}"` : str
+}
+
+/**
+ * Format an age range from statutory low/high ages.
+ * - If both provided: "low–high" (en dash).
+ * - If only low provided: "low+".
+ * - If only high provided: "≤high".
+ * - If neither provided or not finite: "".
+ *
+ * @param {number | null | undefined} low - The statutory low age.
+ * @param {number | null | undefined} high - The statutory high age.
+ * @returns {string} The formatted age range string.
+ * @example
+ * formatAgeRange(5, 11); // => "5–11"
+ * formatAgeRange(11, null); // => "11+"
+ * formatAgeRange(undefined, 16); // => "≤16"
+ * formatAgeRange(undefined, undefined); // => ""
+ */
+const formatAgeRange = (low, high) => {
+  const l = Number.isFinite(low) ? low : null
+  const h = Number.isFinite(high) ? high : null
+  if (l !== null && h !== null) return `${l}–${h}`
+  if (l !== null) return `${l}+`
+  if (h !== null) return `≤${h}`
+  return ''
+}
+
+/**
+ * Convert kilometres to miles and format to a fixed number of decimal places.
+ * Returns an empty string for non-numeric input.
+ *
+ * @param {number} km - Distance in kilometres.
+ * @param {number} [dp=2] - Decimal places to format to.
+ * @returns {string} Miles, formatted to the specified decimal places, or "" if input is invalid.
+ * @example
+ * kmToMiles(10); // => "6.21"
+ * kmToMiles(0, 3); // => "0.000"
+ * kmToMiles(NaN); // => ""
+ */
+const kmToMiles = (km, dp = 2) => {
+  if (typeof km !== 'number' || Number.isNaN(km)) return ''
+  const miles = km * 0.621371
+  return miles.toFixed(dp)
+}
+
+/**
+ * Normalise a list of academic years (from varied shapes) into a comma-separated string.
+ * Accepts:
+ * - An array of strings (e.g. ["2024 to 2025", "2025 to 2026"])
+ * - An array of objects with { name? | label? | code? }
+ * - An object with a `rows` array in either of the above shapes
+ * Returns "" if nothing usable is found.
+ *
+ * @param {Array<string | {name?: string, label?: string, code?: string}> | {rows?: Array<string | {name?: string, label?: string, code?: string}>} | null | undefined} value
+ * @returns {string} Comma-separated academic year labels.
+ * @example
+ * normaliseAcademicYears(['2024 to 2025', '2025 to 2026']); // => "2024 to 2025, 2025 to 2026"
+ * normaliseAcademicYears([{ name: '2024 to 2025' }, { code: 'AY2025' }]); // => "2024 to 2025, AY2025"
+ * normaliseAcademicYears({ rows: [{ label: '2026 to 2027' }] }); // => "2026 to 2027"
+ * normaliseAcademicYears(null); // => ""
+ */
+const normaliseAcademicYears = (value) => {
+  // Accept: ['2024 to 2025', ...] or [{ name:'2024 to 2025' }, { code:'AY2024' }] etc.
+  if (!value) return ''
+  const arr = Array.isArray(value) ? value : (Array.isArray(value?.rows) ? value.rows : [])
+  if (!Array.isArray(arr)) return ''
+  const labels = arr.map(x => {
+    if (typeof x === 'string') return x
+    if (x?.name) return x.name
+    if (x?.label) return x.label
+    if (x?.code) return x.code
+    return ''
+  }).filter(Boolean)
+  return labels.join(', ')
+}
+
 module.exports = {
   getCheckboxValues,
   removeFilter,
@@ -416,5 +507,9 @@ module.exports = {
   hasAnyFilters,
   fetchFilterOptions,
   locationSelectedFilterConfig,
-  providerSelectedFilterConfig
+  providerSelectedFilterConfig,
+  csvEscape,
+  formatAgeRange,
+  kmToMiles,
+  normaliseAcademicYears
 }
