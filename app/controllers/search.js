@@ -544,56 +544,41 @@ exports.schoolSuggestions_json = async (req, res) => {
 /// ------------------------------------------------------------------------ ///
 
 exports.locationDownload_csv = async (req, res, next) => {
+  const PAGE_SIZE = 1000
+
   try {
     const session = req.session?.data ?? {}
     const q = (req.query.q ?? session.q ?? '').toString()
+    if (q !== 'location') return res.status(400).send('Bad request: not a location search')
 
-    // Only valid for the location search mode
-    if (q !== 'location') {
-      return res.status(400).send('Bad request: not a location search')
-    }
-
-    // Pull the same filters you use in results_get
     const filters = parseFilters(session.filters)
     const selectedRadius = filters.radius ?? '10'
     const selectedSchoolType = filters.schoolType
     const selectedSchoolGroup = filters.schoolGroup
     const selectedSchoolStatus = filters.schoolStatus
     const selectedSchoolEducationPhase = filters.schoolEducationPhase
-
-    // Shared keywords text (if any)
     const keywords = (session.keywords ?? '').toString().trim()
 
-    // Location details from your session flow
     const placeId = session.location?.id
     if (!placeId) return res.redirect('/search/location')
 
     const place = await getPlaceDetails(placeId)
     const lat = place?.geometry?.location?.lat
     const lng = place?.geometry?.location?.lng
-    if (!(typeof lat === 'number' && typeof lng === 'number')) {
-      return res.redirect('/search/location')
-    }
+    if (!(typeof lat === 'number' && typeof lng === 'number')) return res.redirect('/search/location')
 
-    // Fetch ALL results (no pagination) — lift the limit to something big.
-    const BIG_LIMIT = 10000
-    const page = 1
-    const limit = BIG_LIMIT
+    // Filename (Europe/London) using place name
+    const safePlace = (place?.name ?? 'location').replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase()
+    const parts = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Europe/London',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+    }).formatToParts(new Date()).reduce((acc, p) => (acc[p.type] = p.value, acc), {})
+    const filename = `rops-location-${safePlace}-${parts.year}${parts.month}${parts.day}-${parts.hour}${parts.minute}${parts.second}.csv`
 
-    const { placements } = await getPlacementSchoolsByLocation(
-      lat,
-      lng,
-      page,
-      limit,
-      selectedRadius,
-      selectedSchoolType,
-      selectedSchoolGroup,
-      selectedSchoolStatus,
-      selectedSchoolEducationPhase,
-      keywords
-    )
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8')
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`)
 
-    // Build CSV header (exact order requested)
     const header = [
       'school name',
       'ukprn',
@@ -613,21 +598,18 @@ exports.locationDownload_csv = async (req, res, next) => {
       'academic years',
       'GIAS URL'
     ]
+    res.write('\uFEFF')
+    res.write(header.map(csvEscape).join(',') + '\r\n')
 
-    // Map each placement to a row
-    const rows = (placements ?? []).map(p => {
-      // Be defensive about shape: data may live on p or p.school/placementSchool
+    const toCsvRow = (p) => {
       const s = p.school ?? p.placementSchool ?? p
-
       const name = s.name ?? s.schoolName ?? ''
       const ukprn = s.ukprn ?? s.UKPRN ?? ''
       const urn = s.urn ?? s.URN ?? ''
-
       const status = s.schoolStatus ?? s.status ?? ''
       const group = s.schoolGroup ?? s.group ?? ''
       const type = s.schoolType ?? s.type ?? ''
       const phase = s.educationPhase ?? s.phase ?? ''
-
       const ageRange = formatAgeRange(s.statutoryLowAge, s.statutoryHighAge)
 
       const addr = s.address ?? {}
@@ -638,20 +620,16 @@ exports.locationDownload_csv = async (req, res, next) => {
       const county = addr.county ?? addr.administrativeArea ?? ''
       const postcode = addr.postcode ?? addr.postalCode ?? ''
 
-      // Distance: prefer explicit miles otherwise convert km
       const distanceMiles =
         (typeof p.distanceMiles === 'number')
           ? p.distanceMiles.toFixed(2)
           : (typeof p.distanceKm === 'number')
               ? kmToMiles(p.distanceKm, 2)
-              : (typeof p.distance === 'number') // if helper returns km as distance
+              : (typeof p.distance === 'number')
                   ? kmToMiles(p.distance, 2)
                   : ''
 
-      // Academic years: look in several places
-      const academicYears =
-        normaliseAcademicYears(p.academicYears ?? s.academicYears ?? s.years)
-
+      const academicYears = normaliseAcademicYears(p.academicYears ?? s.academicYears ?? s.years)
       const giasUrl = urn
         ? `https://get-information-schools.service.gov.uk/Establishments/Establishment/Details/${urn}`
         : ''
@@ -675,33 +653,45 @@ exports.locationDownload_csv = async (req, res, next) => {
         academicYears,
         giasUrl
       ].map(csvEscape).join(',')
-    })
+    }
 
-    const csvHeader = header.map(csvEscape).join(',')
-    const csvBody = rows.join('\r\n')
-    const BOM = '\uFEFF' // Excel-friendly UTF-8
-    const csv = `${BOM}${csvHeader}\r\n${csvBody}`
+    // Fetch & stream pages until exhausted
+    let page = 1
+    // initial page
+    let result = await getPlacementSchoolsByLocation(
+      lat, lng, page, PAGE_SIZE,
+      selectedRadius,
+      selectedSchoolType,
+      selectedSchoolGroup,
+      selectedSchoolStatus,
+      selectedSchoolEducationPhase,
+      keywords
+    )
 
-    const placeName = (place?.name ?? 'location')
-      .replace(/[^a-z0-9]+/gi, '-')
-      .replace(/^-+|-+$/g, '')
-      .toLowerCase()
+    while (true) {
+      const list = result.placements ?? []
+      for (const p of list) {
+        if (req.aborted) return res.end()
+        res.write(toCsvRow(p) + '\r\n')
+      }
+      if (list.length < PAGE_SIZE) break // no more pages
+      page += 1
+      result = await getPlacementSchoolsByLocation(
+        lat, lng, page, PAGE_SIZE,
+        selectedRadius,
+        selectedSchoolType,
+        selectedSchoolGroup,
+        selectedSchoolStatus,
+        selectedSchoolEducationPhase,
+        keywords
+      )
+    }
 
-    const now = new Date()
-    const parts = new Intl.DateTimeFormat('en-GB', {
-      timeZone: 'Europe/London',
-      year: 'numeric', month: '2-digit', day: '2-digit',
-      hour: '2-digit', minute: '2-digit', second: '2-digit',
-      hour12: false
-    }).formatToParts(now).reduce((acc, p) => (acc[p.type] = p.value, acc), {})
-
-    const filename = `rops-location-${placeName}-${parts.year}${parts.month}${parts.day}-${parts.hour}${parts.minute}${parts.second}.csv`
-    res.setHeader('Content-Disposition', `attachment filename="${filename}"`)
-
-    res.setHeader('Content-Type', 'text/csv; charset=utf-8')
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`)
-    return res.status(200).send(csv)
+    return res.end()
   } catch (err) {
+    if (res.headersSent) {
+      try { res.end() } catch (_) {}
+    }
     return next(err)
   }
 }
