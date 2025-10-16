@@ -99,6 +99,14 @@ router.get('/results/remove-keyword-search', checkIsAuthenticated, searchControl
 router.get('/results', checkIsAuthenticated, searchController.results_get)
 
 /// ------------------------------------------------------------------------ ///
+/// SEARCH DATA DOWNLOAD ROUTES
+/// ------------------------------------------------------------------------ ///
+
+router.get('/results/location-download', searchController.locationDownload_csv)
+
+router.get('/results/provider-download', searchController.providerDownload_csv)
+
+/// ------------------------------------------------------------------------ ///
 /// SUPPORT - PLACEMENT SCHOOL ROUTES
 /// ------------------------------------------------------------------------ ///
 
