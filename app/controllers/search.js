@@ -697,13 +697,13 @@ exports.locationDownload_csv = async (req, res, next) => {
 }
 
 exports.providerDownload_csv = async (req, res, next) => {
+  // pick a reasonable page size for streaming
+  const PAGE_SIZE = 1000
+
   try {
     const session = req.session?.data ?? {}
     const q = (req.query.q ?? session.q ?? '').toString()
-
-    if (q !== 'provider') {
-      return res.status(400).send('Bad request: not a provider search')
-    }
+    if (q !== 'provider') return res.status(400).send('Bad request: not a provider search')
 
     const filters = parseFilters(session.filters)
     const selectedRegion = filters.region
@@ -713,18 +713,15 @@ exports.providerDownload_csv = async (req, res, next) => {
     const selectedSchoolEducationPhase = filters.schoolEducationPhase
 
     const keywords = (session.keywords ?? '').toString().trim()
-
     const providerId = session.provider?.id
     if (!providerId) return res.redirect('/search/provider')
 
-    const BIG_LIMIT = 10000
-    const page = 1
-    const limit = BIG_LIMIT
-
-    const { provider, placements } = await getPlacementSchoolsForProvider(
+    // Prime first page to get provider details (name for column + filename)
+    let page = 1
+    const first = await getPlacementSchoolsForProvider(
       providerId,
       page,
-      limit,
+      PAGE_SIZE,
       selectedRegion,
       selectedSchoolType,
       selectedSchoolGroup,
@@ -732,11 +729,24 @@ exports.providerDownload_csv = async (req, res, next) => {
       selectedSchoolEducationPhase,
       keywords
     )
+    const { provider } = first
+    const providerName = (provider?.operatingName || provider?.legalName || provider?.name || '').trim()
 
-    // Resolve a printable provider name once (used for the first column on every row)
-    const pName = (provider?.operatingName || provider?.legalName || provider?.name || '').trim()
+    // Filename with YYYYMMDD-HHMMSS in Europe/London
+    const safeProviderName = (providerName || 'provider')
+      .replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase()
+    const parts = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Europe/London',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+    }).formatToParts(new Date()).reduce((acc, p) => (acc[p.type] = p.value, acc), {})
+    const filename = `rops-provider-${safeProviderName}-${parts.year}${parts.month}${parts.day}-${parts.hour}${parts.minute}${parts.second}.csv`
 
-    // Build CSV header (exact order requested)
+    // Set headers once; we’ll stream the body
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8')
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`)
+
+    // BOM + header row
     const header = [
       'provider name',
       'school name',
@@ -756,19 +766,19 @@ exports.providerDownload_csv = async (req, res, next) => {
       'academic years',
       'GIAS URL'
     ]
+    res.write('\uFEFF') // UTF-8 BOM for Excel
+    res.write(header.map(csvEscape).join(',') + '\r\n')
 
-    const rows = (placements ?? []).map(p => {
+    // Helper to map one placement -> CSV row (same fields/order as header)
+    const toCsvRow = (p) => {
       const s = p.school ?? p.placementSchool ?? p
-
-      const sName = s.name ?? s.schoolName ?? ''
+      const name = s.name ?? s.schoolName ?? ''
       const ukprn = s.ukprn ?? s.UKPRN ?? ''
       const urn = s.urn ?? s.URN ?? ''
-
       const status = s.schoolStatus ?? s.status ?? ''
       const group = s.schoolGroup ?? s.group ?? ''
       const type = s.schoolType ?? s.type ?? ''
       const phase = s.educationPhase ?? s.phase ?? ''
-
       const ageRange = formatAgeRange(s.statutoryLowAge, s.statutoryHighAge)
 
       const addr = s.address ?? {}
@@ -779,16 +789,14 @@ exports.providerDownload_csv = async (req, res, next) => {
       const county = addr.county ?? addr.administrativeArea ?? ''
       const postcode = addr.postcode ?? addr.postalCode ?? ''
 
-      const academicYears =
-        normaliseAcademicYears(p.academicYears ?? s.academicYears ?? s.years)
-
+      const academicYears = normaliseAcademicYears(p.academicYears ?? s.academicYears ?? s.years)
       const giasUrl = urn
         ? `https://get-information-schools.service.gov.uk/Establishments/Establishment/Details/${urn}`
         : ''
 
       return [
-        pName,
-        sName,
+        providerName,
+        name,
         ukprn,
         urn,
         status,
@@ -805,31 +813,44 @@ exports.providerDownload_csv = async (req, res, next) => {
         academicYears,
         giasUrl
       ].map(csvEscape).join(',')
-    })
+    }
 
-    const csvHeader = header.map(csvEscape).join(',')
-    const csvBody = rows.join('\r\n')
-    const BOM = '\uFEFF'
-    const csv = `${BOM}${csvHeader}\r\n${csvBody}`
+    // Stream first page, then loop subsequent pages until exhausted
+    const streamPage = async (result) => {
+      const list = result.placements ?? []
+      for (const p of list) {
+        if (req.aborted) return false // client disconnected
+        res.write(toCsvRow(p) + '\r\n')
+      }
+      return list.length === PAGE_SIZE // true => maybe more pages
+    }
 
-    const providerName = (provider?.operatingName || provider?.legalName || provider?.name || 'provider')
-      .replace(/[^a-z0-9]+/gi, '-')
-      .replace(/^-+|-+$/g, '')
-      .toLowerCase()
+    // First page we already fetched
+    let maybeMore = await streamPage(first)
 
-    const now = new Date()
-    const parts = new Intl.DateTimeFormat('en-GB', {
-      timeZone: 'Europe/London',
-      year: 'numeric', month: '2-digit', day: '2-digit',
-      hour: '2-digit', minute: '2-digit', second: '2-digit',
-      hour12: false
-    }).formatToParts(now).reduce((acc, p) => (acc[p.type] = p.value, acc), {})
-    const filename = `rops-provider-${providerName}-${parts.year}${parts.month}${parts.day}-${parts.hour}${parts.minute}${parts.second}.csv`
+    // Subsequent pages
+    while (maybeMore) {
+      page += 1
+      const result = await getPlacementSchoolsForProvider(
+        providerId,
+        page,
+        PAGE_SIZE,
+        selectedRegion,
+        selectedSchoolType,
+        selectedSchoolGroup,
+        selectedSchoolStatus,
+        selectedSchoolEducationPhase,
+        keywords
+      )
+      maybeMore = await streamPage(result)
+    }
 
-    res.setHeader('Content-Type', 'text/csv; charset=utf-8')
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`)
-    return res.status(200).send(csv)
+    return res.end()
   } catch (err) {
+    // If headers already sent, just end the stream
+    if (res.headersSent) {
+      try { res.end() } catch (_) {}
+    }
     return next(err)
   }
 }
