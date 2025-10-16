@@ -743,8 +743,12 @@ exports.providerDownload_csv = async (req, res, next) => {
       keywords
     )
 
-    // Header with distance removed
+    // Resolve a printable provider name once (used for the first column on every row)
+    const pName = (provider?.operatingName || provider?.legalName || provider?.name || '').trim()
+
+    // Build CSV header (exact order requested)
     const header = [
+      'provider name',
       'school name',
       'ukprn',
       'urn',
@@ -766,7 +770,7 @@ exports.providerDownload_csv = async (req, res, next) => {
     const rows = (placements ?? []).map(p => {
       const s = p.school ?? p.placementSchool ?? p
 
-      const name = s.name ?? s.schoolName ?? ''
+      const sName = s.name ?? s.schoolName ?? ''
       const ukprn = s.ukprn ?? s.UKPRN ?? ''
       const urn = s.urn ?? s.URN ?? ''
 
@@ -793,7 +797,8 @@ exports.providerDownload_csv = async (req, res, next) => {
         : ''
 
       return [
-        name,
+        pName,
+        sName,
         ukprn,
         urn,
         status,
