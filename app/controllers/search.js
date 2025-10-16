@@ -300,7 +300,7 @@ exports.results_get = async (req, res, next) => {
           view: '/results',
           filters: { apply: '/results', remove: '/results/remove-all-filters' },
           search: { find: '/results', remove: '/results/remove-keyword-search' },
-          download: { location: '/results/location-download', provider: '/results/provider-download' }
+          download: '/results/location-download'
         }
       })
     }
@@ -370,7 +370,8 @@ exports.results_get = async (req, res, next) => {
           newSearch: '/search',
           view: '/results',
           filters: { apply: '/results', remove: '/results/remove-all-filters' },
-          search: { find: '/results', remove: '/results/remove-keyword-search' }
+          search: { find: '/results', remove: '/results/remove-keyword-search' },
+          download: '/results/provider-download'
         }
       })
     }
@@ -744,6 +745,135 @@ exports.locationDownload_csv = async (req, res, next) => {
   }
 }
 
-exports.providerDownload_csv = async (req, res) => {
+exports.providerDownload_csv = async (req, res, next) => {
+  try {
+    const session = req.session?.data ?? {};
+    const q = (req.query.q ?? session.q ?? '').toString();
 
-}
+    if (q !== 'provider') {
+      return res.status(400).send('Bad request: not a provider search');
+    }
+
+    const filters = parseFilters(session.filters);
+    const selectedRegion = filters.region;
+    const selectedSchoolType = filters.schoolType;
+    const selectedSchoolGroup = filters.schoolGroup;
+    const selectedSchoolStatus = filters.schoolStatus;
+    const selectedSchoolEducationPhase = filters.schoolEducationPhase;
+
+    const keywords = (session.keywords ?? '').toString().trim();
+
+    const providerId = session.provider?.id;
+    if (!providerId) return res.redirect('/search/provider');
+
+    const BIG_LIMIT = 10000;
+    const page = 1;
+    const limit = BIG_LIMIT;
+
+    const { provider, placements } = await getPlacementSchoolsForProvider(
+      providerId,
+      page,
+      limit,
+      selectedRegion,
+      selectedSchoolType,
+      selectedSchoolGroup,
+      selectedSchoolStatus,
+      selectedSchoolEducationPhase,
+      keywords
+    );
+
+    // Header with distance removed
+    const header = [
+      'school name',
+      'ukprn',
+      'urn',
+      'school status',
+      'school group',
+      'school type',
+      'education phase',
+      'age range',
+      'address line 1',
+      'address line 2',
+      'address line 3',
+      'town',
+      'county',
+      'postcode',
+      'academic years',
+      'GIAS URL'
+    ];
+
+    const rows = (placements ?? []).map(p => {
+      const s = p.school ?? p.placementSchool ?? p;
+
+      const name = s.name ?? s.schoolName ?? '';
+      const ukprn = s.ukprn ?? s.UKPRN ?? '';
+      const urn = s.urn ?? s.URN ?? '';
+
+      const status = s.schoolStatus ?? s.status ?? '';
+      const group = s.schoolGroup ?? s.group ?? '';
+      const type = s.schoolType ?? s.type ?? '';
+      const phase = s.educationPhase ?? s.phase ?? '';
+
+      const ageRange = formatAgeRange(s.statutoryLowAge, s.statutoryHighAge);
+
+      const addr = s.address ?? {};
+      const line1 = addr.address1 ?? addr.line1 ?? '';
+      const line2 = addr.address2 ?? addr.line2 ?? '';
+      const line3 = addr.address3 ?? addr.line3 ?? '';
+      const town  = addr.town ?? addr.locality ?? '';
+      const county = addr.county ?? addr.administrativeArea ?? '';
+      const postcode = addr.postcode ?? addr.postalCode ?? '';
+
+      const academicYears =
+        normaliseAcademicYears(p.academicYears ?? s.academicYears ?? s.years);
+
+      const giasUrl = urn
+        ? `https://get-information-schools.service.gov.uk/Establishments/Establishment/Details/${urn}`
+        : '';
+
+      return [
+        name,
+        ukprn,
+        urn,
+        status,
+        group,
+        type,
+        phase,
+        ageRange,
+        line1,
+        line2,
+        line3,
+        town,
+        county,
+        postcode,
+        academicYears,
+        giasUrl
+      ].map(csvEscape).join(',');
+    });
+
+    const csvHeader = header.map(csvEscape).join(',');
+    const csvBody = rows.join('\r\n');
+    const BOM = '\uFEFF';
+    const csv = `${BOM}${csvHeader}\r\n${csvBody}`;
+
+    const providerName = (provider?.operatingName || provider?.legalName || provider?.name || 'provider')
+      .replace(/[^a-z0-9]+/gi, '-')
+      .replace(/^-+|-+$/g, '')
+      .toLowerCase();
+
+    const now = new Date();
+    const parts = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Europe/London',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+      hour12: false
+    }).formatToParts(now).reduce((acc, p) => (acc[p.type] = p.value, acc), {});
+    const filename = `rops-provider-${providerName}-${parts.year}${parts.month}${parts.day}-${parts.hour}${parts.minute}${parts.second}.csv`;
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    return res.status(200).send(csv);
+  } catch (err) {
+    return next(err);
+  }
+};
