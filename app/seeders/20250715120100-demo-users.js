@@ -1,3 +1,4 @@
+const bcrypt = require('bcrypt')
 const createRevision = require('./helpers/createRevision')
 const createActivityLog = require('./helpers/createActivityLog')
 
@@ -15,6 +16,9 @@ module.exports = {
       const createdAt = new Date()
       const systemUserId = '354751f2-c5f7-483c-b9e4-b6103f50f970' // Acting user ID for changes
       const revisionNumber = 1
+
+      // Hash the default password
+      const hashedPassword = await bcrypt.hash('bat', 10)
 
       const users = [
         {
@@ -43,7 +47,7 @@ module.exports = {
           first_name: user.first_name,
           last_name: user.last_name,
           email: user.email,
-          password: 'bat', // Placeholder password for prototype
+          password: hashedPassword, // Hashed password for prototype (password: 'bat')
           is_active: true,
           created_by_id: systemUserId,
           created_at: createdAt,
