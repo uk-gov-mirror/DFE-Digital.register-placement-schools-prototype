@@ -109,29 +109,29 @@ router.get('/support', checkIsAuthenticated, (req, res) => {
 /// SEARCH ROUTES
 /// ------------------------------------------------------------------------ ///
 
-router.get('/search', checkIsAuthenticated, searchController.search_get)
-router.post('/search', checkIsAuthenticated, searchController.search_post)
+router.get('/search', searchController.search_get)
+router.post('/search', searchController.search_post)
 
-router.get('/search/location', checkIsAuthenticated, searchController.searchLocation_get)
-router.post('/search/location', checkIsAuthenticated, searchController.searchLocation_post)
+router.get('/search/location', searchController.searchLocation_get)
+router.post('/search/location', searchController.searchLocation_post)
 
-router.get('/search/school', checkIsAuthenticated, searchController.searchSchool_get)
-router.post('/search/school', checkIsAuthenticated, searchController.searchSchool_post)
+router.get('/search/school', searchController.searchSchool_get)
+router.post('/search/school', searchController.searchSchool_post)
 
-router.get('/search/provider', checkIsAuthenticated, searchController.searchProvider_get)
-router.post('/search/provider', checkIsAuthenticated, searchController.searchProvider_post)
+router.get('/search/provider', searchController.searchProvider_get)
+router.post('/search/provider', searchController.searchProvider_post)
 
-router.get('/results/remove-region-filter/:region', checkIsAuthenticated, searchController.removeRegionFilter)
-router.get('/results/remove-school-type-filter/:schoolType', checkIsAuthenticated, searchController.removeSchoolTypeFilter)
-router.get('/results/remove-school-group-filter/:schoolGroup', checkIsAuthenticated, searchController.removeSchoolGroupFilter)
-router.get('/results/remove-school-status-filter/:schoolStatus', checkIsAuthenticated, searchController.removeSchoolStatusFilter)
-router.get('/results/remove-school-education-phase-filter/:schoolEducationPhase', checkIsAuthenticated, searchController.removeSchoolEducationPhaseFilter)
+router.get('/results/remove-region-filter/:region', searchController.removeRegionFilter)
+router.get('/results/remove-school-type-filter/:schoolType', searchController.removeSchoolTypeFilter)
+router.get('/results/remove-school-group-filter/:schoolGroup', searchController.removeSchoolGroupFilter)
+router.get('/results/remove-school-status-filter/:schoolStatus', searchController.removeSchoolStatusFilter)
+router.get('/results/remove-school-education-phase-filter/:schoolEducationPhase', searchController.removeSchoolEducationPhaseFilter)
 
-router.get('/results/remove-all-filters', checkIsAuthenticated, searchController.removeAllFilters)
+router.get('/results/remove-all-filters', searchController.removeAllFilters)
 
-router.get('/results/remove-keyword-search', checkIsAuthenticated, searchController.removeKeywordSearch)
+router.get('/results/remove-keyword-search', searchController.removeKeywordSearch)
 
-router.get('/results', checkIsAuthenticated, searchController.results_get)
+router.get('/results', searchController.results_get)
 
 /// ------------------------------------------------------------------------ ///
 /// SUPPORT - PLACEMENT SCHOOL ROUTES
