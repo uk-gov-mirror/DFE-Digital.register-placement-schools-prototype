@@ -39,6 +39,7 @@ The prototype uses environment variables to help configure the application. Thes
 | `ORDNANCE_SURVEY_API_SECRET` | string | The API secret needed to access the Ordnance Survey Places API |
 | `GOOGLE_MAPS_API_KEY` | string | The API key needed to access the Google Maps API |
 | `SESSION_SECRET` | string | A random secret used in user authentication |
+| `USE_SIGN_IN_FORM` | string | Use to turn on/off username and password login. If set to `false`, the login screen displays a list of test personas. Values: `true` or `false` |
 
 ## Tools
 
