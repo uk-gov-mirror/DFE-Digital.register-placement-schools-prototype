@@ -1,3 +1,4 @@
+const bcrypt = require('bcrypt')
 const Pagination = require('../../helpers/pagination')
 const { isValidEmail, isValidEducationEmail } = require('../../helpers/validation')
 const { User } = require('../../models')
@@ -52,7 +53,7 @@ exports.userDetails = async (req, res) => {
   delete req.session.data.user
 
   const user = await User.findOne({ where: { id: req.params.userId } })
-  const showDeleteLink = !(req.params.userId === req.session.passport.user.id)
+  const showDeleteLink = !(req.params.userId === req.user.id)
 
   res.render('support/users/show', {
     user,
@@ -161,12 +162,17 @@ exports.newUserCheck_get = async (req, res) => {
 
 exports.newUserCheck_post = async (req, res) => {
   const { user } = req.session.data
+
+  // Hash the default password for new users
+  const hashedPassword = await bcrypt.hash('bat', 10)
+
   await User.create({
     firstName: user.firstName,
     lastName: user.lastName,
     email: user.email,
-    createdById: req.session.passport.user.id,
-    updatedById: req.session.passport.user.id
+    password: hashedPassword,
+    createdById: req.user.id,
+    updatedById: req.user.id
   })
 
   delete req.session.data.user
@@ -300,7 +306,7 @@ exports.editUserCheck_post = async (req, res) => {
     firstName: user.firstName,
     lastName: user.lastName,
     email: user.email,
-    updatedById: req.session.passport.user.id
+    updatedById: req.user.id
   })
 
   delete req.session.data.user
@@ -327,8 +333,8 @@ exports.deleteUser_post = async (req, res) => {
   const user = await User.findByPk(userId)
   await user.update({
     deletedAt: new Date(),
-    deletedById: req.session.passport.user.id,
-    updatedById: req.session.passport.user.id
+    deletedById: req.user.id,
+    updatedById: req.user.id
   })
 
   req.flash('success', 'Support user deleted')
