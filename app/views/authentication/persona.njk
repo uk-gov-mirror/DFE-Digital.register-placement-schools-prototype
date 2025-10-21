@@ -1,0 +1,67 @@
+{% extends "layouts/auth.njk" %}
+
+{% set hideAccountNavigation = true %}
+
+{% set title = "Sign in" %}
+
+{% block pageTitle %}
+  {{ "Error: " if errors | length }}{{ title + " - " if title }}{{ serviceName }} - GOV.UK
+{% endblock %}
+
+{% block content %}
+
+{% include "_includes/error-summary.njk" %}
+
+<div class="govuk-grid-row">
+  <div class="govuk-grid-column-two-thirds">
+
+    <h1 class="govuk-heading-l">{{ title }}</h1>
+
+    <p class="govuk-body">Choose a persona to sign in to the Register of placement schools service.</p>
+
+    <form action="{{ actions.save }}" method="post" accept-charset="utf-8" novalidate>
+
+      {{ govukRadios({
+        name: "persona",
+        fieldset: {
+          legend: {
+            text: "Who do you want to sign in as?",
+            classes: "govuk-fieldset__legend--m"
+          }
+        },
+        errorMessage: errors | getErrorMessage("persona"),
+        items: [
+          {
+            value: "3faa7586-951b-495c-9999-e5fc4367b507",
+            text: "Anne Wilson",
+            hint: {
+              text: "test1@education.gov.uk"
+            }
+          },
+          {
+            value: "99c07212-6395-40b5-9776-9210645a5028",
+            text: "Mary Lawson",
+            hint: {
+              text: "test2@education.gov.uk"
+            }
+          },
+          {
+            value: "354751f2-c5f7-483c-b9e4-b6103f50f970",
+            text: "Colin Chapman",
+            hint: {
+              text: "test3@education.gov.uk"
+            }
+          }
+        ]
+      }) }}
+
+      {{ govukButton({
+        text: "Continue"
+      }) }}
+
+    </form>
+
+  </div>
+</div>
+
+{% endblock %}
