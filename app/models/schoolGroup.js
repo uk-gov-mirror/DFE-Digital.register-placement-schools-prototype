@@ -77,10 +77,10 @@ module.exports = (sequelize) => {
     }
   )
 
-  // const createRevisionHook = require('../hooks/revisionHook')
+  // const revisionHook = require('../hooks/revisionHook')
 
   // SchoolGroup.addHook('afterCreate', (instance, options) =>
-  //   createRevisionHook({ revisionModelName: 'SchoolGroupRevision', modelKey: 'schoolGroup' })(instance, {
+  //   revisionHook({ revisionModelName: 'SchoolGroupRevision', modelKey: 'schoolGroup' })(instance, {
   //     ...options,
   //     hookName: 'afterCreate'
   //   })
@@ -88,7 +88,7 @@ module.exports = (sequelize) => {
 
   // SchoolGroup.addHook('afterUpdate', (instance, options) => {
   //   const hookName = instance.deletedById !== null ? 'afterDestroy' : 'afterUpdate'
-  //   createRevisionHook({ revisionModelName: 'SchoolGroupRevision', modelKey: 'schoolGroup' })(instance, {
+  //   revisionHook({ revisionModelName: 'SchoolGroupRevision', modelKey: 'schoolGroup' })(instance, {
   //     ...options,
   //     hookName
   //   })

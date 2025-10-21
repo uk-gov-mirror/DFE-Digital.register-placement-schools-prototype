@@ -81,10 +81,10 @@ module.exports = (sequelize) => {
     }
   )
 
-  // const createRevisionHook = require('../hooks/revisionHook')
+  // const revisionHook = require('../hooks/revisionHook')
 
   // Region.addHook('afterCreate', (instance, options) =>
-  //   createRevisionHook({ revisionModelName: 'RegionRevision', modelKey: 'region' })(instance, {
+  //   revisionHook({ revisionModelName: 'RegionRevision', modelKey: 'region' })(instance, {
   //     ...options,
   //     hookName: 'afterCreate'
   //   })
@@ -92,7 +92,7 @@ module.exports = (sequelize) => {
 
   // Region.addHook('afterUpdate', (instance, options) => {
   //   const hookName = instance.deletedById !== null ? 'afterDestroy' : 'afterUpdate'
-  //   createRevisionHook({ revisionModelName: 'RegionRevision', modelKey: 'region' })(instance, {
+  //   revisionHook({ revisionModelName: 'RegionRevision', modelKey: 'region' })(instance, {
   //     ...options,
   //     hookName
   //   })
