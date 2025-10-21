@@ -1,0 +1,86 @@
+{% extends "layouts/auth.njk" %}
+
+{% set hideAccountNavigation = true %}
+
+{% set title = "Sign in" %}
+
+{% block pageTitle %}
+  {{ "Error: " if flash.error }}{{ title + " - " if title }}{{ caption + " - " if caption }}{{ serviceName }} - GOV.UK
+{% endblock %}
+
+{% block content %}
+
+{% if flash.error %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-full">
+      {{ govukErrorSummary({
+        titleText: "There is a problem",
+        errorList: [{
+          text: "Enter a valid email address",
+          href: "#email"
+        },
+        {
+          text: "Enter a valid password",
+          href: "#password"
+        }]
+      }) }}
+    </div>
+  </div>
+{% endif %}
+
+<div class="govuk-grid-row">
+  <div class="govuk-grid-column-two-thirds">
+
+    <h1 class="govuk-heading-l">{{ title }}</h1>
+
+    <p class="govuk-body">Sign in to access the Register of placement schools service.</p>
+
+    <form action="{{ actions.save }}" method="post" accept-charset="utf-8" novalidate>
+
+      {{ govukInput({
+        id: "email",
+        name: "email",
+        label: {
+          text: "Email address",
+          classes: "govuk-label--s"
+        },
+        errorMessage: "Enter a valid email address" if flash.error,
+        type: "email",
+        autocomplete: "email",
+        spellcheck: false,
+        value: email,
+        classes: "govuk-!-width-two-thirds"
+      }) }}
+
+      {{ govukInput({
+        id: "password",
+        name: "password",
+        label: {
+          text: "Password",
+          classes: "govuk-label--s"
+        },
+        errorMessage: "Enter a valid password" if flash.error,
+        type: "password",
+        autocomplete: "current-password",
+        classes: "govuk-!-width-two-thirds",
+        formGroup: {
+          classes: "govuk-!-margin-bottom-1"
+        }
+      }) }}
+
+      <p class="govuk-body">
+        <a class="govuk-link govuk-link--no-visited-state" href="#">
+          Forgotten your password?
+        </a>
+      </p>
+
+      {{ govukButton({
+        text: "Sign in"
+      }) }}
+
+    </form>
+
+  </div>
+</div>
+
+{% endblock %}

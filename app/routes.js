@@ -3,8 +3,27 @@
 // https://prototype-kit.service.gov.uk/docs/create-routes
 //
 
+require('dotenv').config()
+
 const govukPrototypeKit = require('govuk-prototype-kit')
 const router = govukPrototypeKit.requests.setupRouter()
+const session = require('express-session')
+
+/// ------------------------------------------------------------------------ ///
+/// Session configuration
+/// ------------------------------------------------------------------------ ///
+router.use(
+  session({
+    secret: process.env.SESSION_SECRET || 'default-insecure-secret-change-in-production',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      maxAge: 1000 * 60 * 60 * 4, // 4 hours
+      secure: process.env.NODE_ENV === 'production',
+      httpOnly: true
+    }
+  })
+)
 
 /// ------------------------------------------------------------------------ ///
 /// Flash messaging
@@ -13,21 +32,17 @@ const flash = require('connect-flash')
 router.use(flash())
 
 /// ------------------------------------------------------------------------ ///
-/// User authentication
+/// Passport authentication
 /// ------------------------------------------------------------------------ ///
-// TODO: Replace with Passport
-const passport = {
-  user: {
-    id: '3faa7586-951b-495c-9999-e5fc4367b507',
-    first_name: 'Colin',
-    last_name: 'Chapman',
-    email: 'colin.chapman@example.gov.uk'
-  }
-}
+const passport = require('./config/passport')
+
+router.use(passport.initialize())
+router.use(passport.session())
 
 /// ------------------------------------------------------------------------ ///
 /// Controller modules
 /// ------------------------------------------------------------------------ ///
+const authenticationController = require('./controllers/authentication')
 const contentController = require('./controllers/content')
 const errorController = require('./controllers/error')
 const feedbackController = require('./controllers/feedback')
@@ -40,12 +55,25 @@ const supportUserController = require('./controllers/support/user')
 /// Authentication middleware
 /// ------------------------------------------------------------------------ ///
 const checkIsAuthenticated = (req, res, next) => {
-  // the signed in user
-  req.session.passport = passport
-  // the base URL for navigation
-  res.locals.baseUrl = `/placement-schools/${req.params.schoolId}`
-  res.locals.supportBaseUrl = `/support/placement-schools/${req.params.schoolId}`
-  next()
+  if (req.isAuthenticated()) {
+    // Set base URLs for navigation
+    res.locals.baseUrl = `/placement-schools/${req.params.schoolId}`
+    res.locals.supportBaseUrl = `/support/placement-schools/${req.params.schoolId}`
+    // Make user available in templates
+    res.locals.passport = {
+      user: {
+        id: req.user.id,
+        first_name: req.user.firstName,
+        last_name: req.user.lastName,
+        email: req.user.email
+      }
+    }
+    return next()
+  }
+
+  // Save the original URL to redirect after login
+  req.session.returnTo = req.originalUrl
+  res.redirect('/auth/sign-in')
 }
 
 /// ------------------------------------------------------------------------ ///
@@ -59,14 +87,21 @@ router.all('*', (req, res, next) => {
 })
 
 /// ------------------------------------------------------------------------ ///
-/// HOMEPAGE ROUTE
+/// AUTHENTICATION ROUTES
 /// ------------------------------------------------------------------------ ///
-router.get('/support', (req, res) => {
-  res.redirect('/support/placement-schools')
+router.get('/auth/sign-in', authenticationController.signIn_get)
+router.post('/auth/sign-in', authenticationController.signIn_post)
+router.get('/auth/sign-out', authenticationController.signOut_get)
+
+// Redirect /support/sign-out to new auth route for backwards compatibility
+router.get('/support/sign-out', (req, res) => {
+  res.redirect('/auth/sign-out')
 })
 
-// Temporary sign out - does nothing
-router.get('/support/sign-out', (req, res) => {
+/// ------------------------------------------------------------------------ ///
+/// HOMEPAGE ROUTE
+/// ------------------------------------------------------------------------ ///
+router.get('/support', checkIsAuthenticated, (req, res) => {
   res.redirect('/support/placement-schools')
 })
 
@@ -74,29 +109,29 @@ router.get('/support/sign-out', (req, res) => {
 /// SEARCH ROUTES
 /// ------------------------------------------------------------------------ ///
 
-router.get('/search', checkIsAuthenticated, searchController.search_get)
-router.post('/search', checkIsAuthenticated, searchController.search_post)
+router.get('/search', searchController.search_get)
+router.post('/search', searchController.search_post)
 
-router.get('/search/location', checkIsAuthenticated, searchController.searchLocation_get)
-router.post('/search/location', checkIsAuthenticated, searchController.searchLocation_post)
+router.get('/search/location', searchController.searchLocation_get)
+router.post('/search/location', searchController.searchLocation_post)
 
-router.get('/search/school', checkIsAuthenticated, searchController.searchSchool_get)
-router.post('/search/school', checkIsAuthenticated, searchController.searchSchool_post)
+router.get('/search/school', searchController.searchSchool_get)
+router.post('/search/school', searchController.searchSchool_post)
 
-router.get('/search/provider', checkIsAuthenticated, searchController.searchProvider_get)
-router.post('/search/provider', checkIsAuthenticated, searchController.searchProvider_post)
+router.get('/search/provider', searchController.searchProvider_get)
+router.post('/search/provider', searchController.searchProvider_post)
 
-router.get('/results/remove-region-filter/:region', checkIsAuthenticated, searchController.removeRegionFilter)
-router.get('/results/remove-school-type-filter/:schoolType', checkIsAuthenticated, searchController.removeSchoolTypeFilter)
-router.get('/results/remove-school-group-filter/:schoolGroup', checkIsAuthenticated, searchController.removeSchoolGroupFilter)
-router.get('/results/remove-school-status-filter/:schoolStatus', checkIsAuthenticated, searchController.removeSchoolStatusFilter)
-router.get('/results/remove-school-education-phase-filter/:schoolEducationPhase', checkIsAuthenticated, searchController.removeSchoolEducationPhaseFilter)
+router.get('/results/remove-region-filter/:region', searchController.removeRegionFilter)
+router.get('/results/remove-school-type-filter/:schoolType', searchController.removeSchoolTypeFilter)
+router.get('/results/remove-school-group-filter/:schoolGroup', searchController.removeSchoolGroupFilter)
+router.get('/results/remove-school-status-filter/:schoolStatus', searchController.removeSchoolStatusFilter)
+router.get('/results/remove-school-education-phase-filter/:schoolEducationPhase', searchController.removeSchoolEducationPhaseFilter)
 
-router.get('/results/remove-all-filters', checkIsAuthenticated, searchController.removeAllFilters)
+router.get('/results/remove-all-filters', searchController.removeAllFilters)
 
-router.get('/results/remove-keyword-search', checkIsAuthenticated, searchController.removeKeywordSearch)
+router.get('/results/remove-keyword-search', searchController.removeKeywordSearch)
 
-router.get('/results', checkIsAuthenticated, searchController.results_get)
+router.get('/results', searchController.results_get)
 
 /// ------------------------------------------------------------------------ ///
 /// SEARCH DATA DOWNLOAD ROUTES

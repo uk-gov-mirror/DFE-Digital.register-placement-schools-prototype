@@ -14,9 +14,11 @@
     "start": "govuk-prototype-kit start"
   },
   "dependencies": {
+    "bcrypt": "^6.0.0",
     "connect-flash": "^0.1.1",
     "csv-parse": "^6.1.0",
     "dotenv": "^17.2.3",
+    "express-session": "^1.18.2",
     "govuk-frontend": "^5.13.0",
     "govuk-prototype-kit": "^13.18.1",
     "gray-matter": "^4.0.3",
@@ -24,6 +26,8 @@
     "marked": "^16.4.1",
     "marked-gfm-heading-id": "^4.1.2",
     "numeral": "^2.0.6",
+    "passport": "^0.7.0",
+    "passport-local": "^1.0.0",
     "sequelize": "^6.37.7",
     "sequelize-cli": "^6.6.3",
     "sqlite3": "^5.1.7",
