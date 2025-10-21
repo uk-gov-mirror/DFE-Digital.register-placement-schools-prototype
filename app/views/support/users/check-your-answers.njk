@@ -71,7 +71,7 @@
           },
           {
             key: {
-              text: "Email"
+              text: "Email address"
             },
             value: {
               text: user.email
@@ -85,7 +85,24 @@
                 }
               ]
             }
-          }
+          },
+          {
+            key: {
+              text: "Is the account active?"
+            },
+            value: {
+              text: "Yes" if (user.isActive === true or user.isActive === "true") else "No"
+            },
+            actions: {
+              items: [
+                {
+                  href: actions.change,
+                  text: "Change",
+                  visuallyHiddenText: "account active status"
+                }
+              ]
+            }
+          } if currentUser
         ]
       }) }}
 

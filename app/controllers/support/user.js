@@ -54,10 +54,12 @@ exports.userDetails = async (req, res) => {
 
   const user = await User.findOne({ where: { id: req.params.userId } })
   const showDeleteLink = !(req.params.userId === req.user.id)
+  const showChangeLink = !(req.params.userId === req.user.id)
 
   res.render('support/users/show', {
     user,
     showDeleteLink,
+    showChangeLink,
     actions: {
       back: '/support/users',
       change: `/support/users/${user.id}/edit`,
@@ -302,10 +304,14 @@ exports.editUserCheck_post = async (req, res) => {
   const { user } = req.session.data
   const currentUser = await User.findByPk(userId)
 
+  // Convert isActive string to boolean
+  const isActive = user.isActive === 'true' || user.isActive === true
+
   currentUser.update({
     firstName: user.firstName,
     lastName: user.lastName,
     email: user.email,
+    isActive: isActive,
     updatedById: req.user.id
   })
 

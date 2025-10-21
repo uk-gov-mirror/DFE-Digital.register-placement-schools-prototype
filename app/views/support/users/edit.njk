@@ -86,6 +86,31 @@
         value: user.email
       }) }}
 
+      {% if currentUser %}
+        {{ govukRadios({
+          name: "user[isActive]",
+          fieldset: {
+            legend: {
+              text: "Is the account active?",
+              classes: "govuk-fieldset__legend--s"
+            }
+          },
+          errorMessage: errors | getErrorMessage("isActive"),
+          items: [
+            {
+              value: "true",
+              text: "Yes",
+              checked: user.isActive === true or user.isActive === "true"
+            },
+            {
+              value: "false",
+              text: "No",
+              checked: user.isActive === false or user.isActive === "false"
+            }
+          ]
+        }) }}
+      {% endif %}
+
       {{ govukButton({
         text: "Continue"
       }) }}
