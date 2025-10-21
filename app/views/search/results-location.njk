@@ -19,9 +19,14 @@
       Showing placement schools within {{ selectedRadius }} miles of ‘{{ location.name }}’.
     </p>
 
-    <p class="govuk-body">
+    <div class="govuk-button-group">
+      {{ govukButton({
+        text: "Download results as CSV",
+        href: actions.download
+      }) }}
+
       <a class="govuk-link" href="{{ actions.newSearch }}">Search again</a>
-    </p>
+    </div>
 
   </div>
 </div>
@@ -54,7 +59,7 @@
               {{ placement.school.urn }}
             </li>
             <li>
-              <a href="https://get-information-schools.service.gov.uk/Establishments/Establishment/Details/{{placement.school.urn}}" target="_blank" rel="noreferrer nofollow" class="govuk-link">View school on Get information about schools (opens in new tab)</a>
+              <a href="https://get-information-schools.service.gov.uk/Establishments/Establishment/Details/{{ placement.school.urn }}" target="_blank" rel="noreferrer nofollow" class="govuk-link">View school on Get information about schools (opens in new tab)</a>
             </li>
           </ul>
         {% endset %}

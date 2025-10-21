@@ -24,7 +24,11 @@ const {
   hasAnyFilters,
   fetchFilterOptions,
   locationSelectedFilterConfig,
-  providerSelectedFilterConfig
+  providerSelectedFilterConfig,
+  csvEscape,
+  formatAgeRange,
+  kmToMiles,
+  normaliseAcademicYears
 } = require('../helpers/search')
 
 exports.search_get = async (req, res) => {
@@ -299,7 +303,8 @@ exports.results_get = async (req, res, next) => {
           newSearch: '/search',
           view: '/results',
           filters: { apply: '/results', remove: '/results/remove-all-filters' },
-          search: { find: '/results', remove: '/results/remove-keyword-search' }
+          search: { find: '/results', remove: '/results/remove-keyword-search' },
+          download: '/results/location-download'
         }
       })
     }
@@ -369,7 +374,8 @@ exports.results_get = async (req, res, next) => {
           newSearch: '/search',
           view: '/results',
           filters: { apply: '/results', remove: '/results/remove-all-filters' },
-          search: { find: '/results', remove: '/results/remove-keyword-search' }
+          search: { find: '/results', remove: '/results/remove-keyword-search' },
+          download: '/results/provider-download'
         }
       })
     }
@@ -531,4 +537,320 @@ exports.schoolSuggestions_json = async (req, res) => {
   })
 
   res.json(schools)
+}
+
+/// ------------------------------------------------------------------------ ///
+/// Download data
+/// ------------------------------------------------------------------------ ///
+
+exports.locationDownload_csv = async (req, res, next) => {
+  const PAGE_SIZE = 1000
+
+  try {
+    const session = req.session?.data ?? {}
+    const q = (req.query.q ?? session.q ?? '').toString()
+    if (q !== 'location') return res.status(400).send('Bad request: not a location search')
+
+    const filters = parseFilters(session.filters)
+    const selectedRadius = filters.radius ?? '10'
+    const selectedSchoolType = filters.schoolType
+    const selectedSchoolGroup = filters.schoolGroup
+    const selectedSchoolStatus = filters.schoolStatus
+    const selectedSchoolEducationPhase = filters.schoolEducationPhase
+    const keywords = (session.keywords ?? '').toString().trim()
+
+    const placeId = session.location?.id
+    if (!placeId) return res.redirect('/search/location')
+
+    const place = await getPlaceDetails(placeId)
+    const lat = place?.geometry?.location?.lat
+    const lng = place?.geometry?.location?.lng
+    if (!(typeof lat === 'number' && typeof lng === 'number')) return res.redirect('/search/location')
+
+    // Filename (Europe/London) using place name
+    const safePlace = (place?.name ?? 'location').replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase()
+    const parts = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Europe/London',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+    }).formatToParts(new Date()).reduce((acc, p) => (acc[p.type] = p.value, acc), {})
+    const filename = `rops-location-${safePlace}-${parts.year}${parts.month}${parts.day}-${parts.hour}${parts.minute}${parts.second}.csv`
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8')
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`)
+
+    const header = [
+      'school name',
+      'ukprn',
+      'urn',
+      'school status',
+      'school group',
+      'school type',
+      'education phase',
+      'age range',
+      'address line 1',
+      'address line 2',
+      'address line 3',
+      'town',
+      'county',
+      'postcode',
+      'distance (miles)',
+      'academic years',
+      'GIAS URL'
+    ]
+    res.write('\uFEFF')
+    res.write(header.map(csvEscape).join(',') + '\r\n')
+
+    const toCsvRow = (p) => {
+      const s = p.school ?? p.placementSchool ?? p
+      const name = s.name ?? s.schoolName ?? ''
+      const ukprn = s.ukprn ?? s.UKPRN ?? ''
+      const urn = s.urn ?? s.URN ?? ''
+      const status = s.schoolStatus ?? s.status ?? ''
+      const group = s.schoolGroup ?? s.group ?? ''
+      const type = s.schoolType ?? s.type ?? ''
+      const phase = s.educationPhase ?? s.phase ?? ''
+      const ageRange = formatAgeRange(s.statutoryLowAge, s.statutoryHighAge)
+
+      const addr = s.address ?? {}
+      const line1 = addr.address1 ?? addr.line1 ?? ''
+      const line2 = addr.address2 ?? addr.line2 ?? ''
+      const line3 = addr.address3 ?? addr.line3 ?? ''
+      const town  = addr.town ?? addr.locality ?? ''
+      const county = addr.county ?? addr.administrativeArea ?? ''
+      const postcode = addr.postcode ?? addr.postalCode ?? ''
+
+      const distanceMiles =
+        (typeof p.distanceMiles === 'number')
+          ? p.distanceMiles.toFixed(2)
+          : (typeof p.distanceKm === 'number')
+              ? kmToMiles(p.distanceKm, 2)
+              : (typeof p.distance === 'number')
+                  ? kmToMiles(p.distance, 2)
+                  : ''
+
+      const academicYears = normaliseAcademicYears(p.academicYears ?? s.academicYears ?? s.years)
+      const giasUrl = urn
+        ? `https://get-information-schools.service.gov.uk/Establishments/Establishment/Details/${urn}`
+        : ''
+
+      return [
+        name,
+        ukprn,
+        urn,
+        status,
+        group,
+        type,
+        phase,
+        ageRange,
+        line1,
+        line2,
+        line3,
+        town,
+        county,
+        postcode,
+        distanceMiles,
+        academicYears,
+        giasUrl
+      ].map(csvEscape).join(',')
+    }
+
+    // Fetch & stream pages until exhausted
+    let page = 1
+    // initial page
+    let result = await getPlacementSchoolsByLocation(
+      lat, lng, page, PAGE_SIZE,
+      selectedRadius,
+      selectedSchoolType,
+      selectedSchoolGroup,
+      selectedSchoolStatus,
+      selectedSchoolEducationPhase,
+      keywords
+    )
+
+    while (true) {
+      const list = result.placements ?? []
+      for (const p of list) {
+        if (req.aborted) return res.end()
+        res.write(toCsvRow(p) + '\r\n')
+      }
+      if (list.length < PAGE_SIZE) break // no more pages
+      page += 1
+      result = await getPlacementSchoolsByLocation(
+        lat, lng, page, PAGE_SIZE,
+        selectedRadius,
+        selectedSchoolType,
+        selectedSchoolGroup,
+        selectedSchoolStatus,
+        selectedSchoolEducationPhase,
+        keywords
+      )
+    }
+
+    return res.end()
+  } catch (err) {
+    if (res.headersSent) {
+      try { res.end() } catch (_) {}
+    }
+    return next(err)
+  }
+}
+
+exports.providerDownload_csv = async (req, res, next) => {
+  // pick a reasonable page size for streaming
+  const PAGE_SIZE = 1000
+
+  try {
+    const session = req.session?.data ?? {}
+    const q = (req.query.q ?? session.q ?? '').toString()
+    if (q !== 'provider') return res.status(400).send('Bad request: not a provider search')
+
+    const filters = parseFilters(session.filters)
+    const selectedRegion = filters.region
+    const selectedSchoolType = filters.schoolType
+    const selectedSchoolGroup = filters.schoolGroup
+    const selectedSchoolStatus = filters.schoolStatus
+    const selectedSchoolEducationPhase = filters.schoolEducationPhase
+
+    const keywords = (session.keywords ?? '').toString().trim()
+    const providerId = session.provider?.id
+    if (!providerId) return res.redirect('/search/provider')
+
+    // Prime first page to get provider details (name for column + filename)
+    let page = 1
+    const first = await getPlacementSchoolsForProvider(
+      providerId,
+      page,
+      PAGE_SIZE,
+      selectedRegion,
+      selectedSchoolType,
+      selectedSchoolGroup,
+      selectedSchoolStatus,
+      selectedSchoolEducationPhase,
+      keywords
+    )
+    const { provider } = first
+    const providerName = (provider?.operatingName || provider?.legalName || provider?.name || '').trim()
+
+    // Filename with YYYYMMDD-HHMMSS in Europe/London
+    const safeProviderName = (providerName || 'provider')
+      .replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase()
+    const parts = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Europe/London',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+    }).formatToParts(new Date()).reduce((acc, p) => (acc[p.type] = p.value, acc), {})
+    const filename = `rops-provider-${safeProviderName}-${parts.year}${parts.month}${parts.day}-${parts.hour}${parts.minute}${parts.second}.csv`
+
+    // Set headers once; we’ll stream the body
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8')
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`)
+
+    // BOM + header row
+    const header = [
+      'provider name',
+      'school name',
+      'ukprn',
+      'urn',
+      'school status',
+      'school group',
+      'school type',
+      'education phase',
+      'age range',
+      'address line 1',
+      'address line 2',
+      'address line 3',
+      'town',
+      'county',
+      'postcode',
+      'academic years',
+      'GIAS URL'
+    ]
+    res.write('\uFEFF') // UTF-8 BOM for Excel
+    res.write(header.map(csvEscape).join(',') + '\r\n')
+
+    // Helper to map one placement -> CSV row (same fields/order as header)
+    const toCsvRow = (p) => {
+      const s = p.school ?? p.placementSchool ?? p
+      const name = s.name ?? s.schoolName ?? ''
+      const ukprn = s.ukprn ?? s.UKPRN ?? ''
+      const urn = s.urn ?? s.URN ?? ''
+      const status = s.schoolStatus ?? s.status ?? ''
+      const group = s.schoolGroup ?? s.group ?? ''
+      const type = s.schoolType ?? s.type ?? ''
+      const phase = s.educationPhase ?? s.phase ?? ''
+      const ageRange = formatAgeRange(s.statutoryLowAge, s.statutoryHighAge)
+
+      const addr = s.address ?? {}
+      const line1 = addr.address1 ?? addr.line1 ?? ''
+      const line2 = addr.address2 ?? addr.line2 ?? ''
+      const line3 = addr.address3 ?? addr.line3 ?? ''
+      const town  = addr.town ?? addr.locality ?? ''
+      const county = addr.county ?? addr.administrativeArea ?? ''
+      const postcode = addr.postcode ?? addr.postalCode ?? ''
+
+      const academicYears = normaliseAcademicYears(p.academicYears ?? s.academicYears ?? s.years)
+      const giasUrl = urn
+        ? `https://get-information-schools.service.gov.uk/Establishments/Establishment/Details/${urn}`
+        : ''
+
+      return [
+        providerName,
+        name,
+        ukprn,
+        urn,
+        status,
+        group,
+        type,
+        phase,
+        ageRange,
+        line1,
+        line2,
+        line3,
+        town,
+        county,
+        postcode,
+        academicYears,
+        giasUrl
+      ].map(csvEscape).join(',')
+    }
+
+    // Stream first page, then loop subsequent pages until exhausted
+    const streamPage = async (result) => {
+      const list = result.placements ?? []
+      for (const p of list) {
+        if (req.aborted) return false // client disconnected
+        res.write(toCsvRow(p) + '\r\n')
+      }
+      return list.length === PAGE_SIZE // true => maybe more pages
+    }
+
+    // First page we already fetched
+    let maybeMore = await streamPage(first)
+
+    // Subsequent pages
+    while (maybeMore) {
+      page += 1
+      const result = await getPlacementSchoolsForProvider(
+        providerId,
+        page,
+        PAGE_SIZE,
+        selectedRegion,
+        selectedSchoolType,
+        selectedSchoolGroup,
+        selectedSchoolStatus,
+        selectedSchoolEducationPhase,
+        keywords
+      )
+      maybeMore = await streamPage(result)
+    }
+
+    return res.end()
+  } catch (err) {
+    // If headers already sent, just end the stream
+    if (res.headersSent) {
+      try { res.end() } catch (_) {}
+    }
+    return next(err)
+  }
 }
