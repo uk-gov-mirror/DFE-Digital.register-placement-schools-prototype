@@ -1,6 +1,6 @@
 const revisionFields = require('../constants/revisionFields')
 
-const createRevisionHook = ({ revisionModelName, modelKey }) => {
+const revisionHook = ({ revisionModelName, modelKey }) => {
   return async (instance, options) => {
     const sequelize = instance.sequelize
     const RevisionModel = sequelize.models[revisionModelName]
@@ -54,4 +54,4 @@ const createRevisionHook = ({ revisionModelName, modelKey }) => {
   }
 }
 
-module.exports = createRevisionHook
+module.exports = revisionHook
