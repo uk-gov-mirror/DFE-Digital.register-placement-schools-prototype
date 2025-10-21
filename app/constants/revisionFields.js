@@ -3,6 +3,7 @@ module.exports = {
     'firstName',
     'lastName',
     'email',
+    'isActive',
     'deletedAt',
     'deletedById'
   ]

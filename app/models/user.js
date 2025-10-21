@@ -91,10 +91,10 @@ module.exports = (sequelize) => {
     }
   )
 
-  const createRevisionHook = require('../hooks/revisionHook')
+  const revisionHook = require('../hooks/revisionHook')
 
   User.addHook('afterCreate', (instance, options) =>
-    createRevisionHook({ revisionModelName: 'UserRevision', modelKey: 'user' })(instance, {
+    revisionHook({ revisionModelName: 'UserRevision', modelKey: 'user' })(instance, {
       ...options,
       hookName: 'afterCreate'
     })
@@ -102,7 +102,7 @@ module.exports = (sequelize) => {
 
   User.addHook('afterUpdate', (instance, options) => {
     const hookName = instance.deletedById !== null ? 'afterDestroy' : 'afterUpdate'
-    createRevisionHook({ revisionModelName: 'UserRevision', modelKey: 'user' })(instance, {
+    revisionHook({ revisionModelName: 'UserRevision', modelKey: 'user' })(instance, {
       ...options,
       hookName
     })
