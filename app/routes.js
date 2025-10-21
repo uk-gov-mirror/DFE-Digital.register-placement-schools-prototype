@@ -91,6 +91,8 @@ router.all('*', (req, res, next) => {
 /// ------------------------------------------------------------------------ ///
 router.get('/auth/sign-in', authenticationController.signIn_get)
 router.post('/auth/sign-in', authenticationController.signIn_post)
+router.get('/auth/persona', authenticationController.persona_get)
+router.post('/auth/persona', authenticationController.persona_post)
 router.get('/auth/sign-out', authenticationController.signOut_get)
 
 // Redirect /support/sign-out to new auth route for backwards compatibility
