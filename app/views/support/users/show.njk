@@ -49,7 +49,7 @@
                 visuallyHiddenText: "first name"
               }
             ]
-          }
+          } if showChangeLink
         },
         {
           key: {
@@ -66,11 +66,11 @@
                 visuallyHiddenText: "last name"
               }
             ]
-          }
+          } if showChangeLink
         },
         {
           key: {
-            text: "Email"
+            text: "Email address"
           },
           value: {
             text: user.email
@@ -83,7 +83,24 @@
                 visuallyHiddenText: "email"
               }
             ]
-          }
+          } if showChangeLink
+        },
+        {
+          key: {
+            text: "Is the account active?"
+          },
+          value: {
+            text: "Yes" if user.isActive else "No"
+          },
+          actions: {
+            items: [
+              {
+                href: actions.change,
+                text: "Change",
+                visuallyHiddenText: "account active status"
+              }
+            ]
+          } if showChangeLink
         }
       ]
     }) }}
