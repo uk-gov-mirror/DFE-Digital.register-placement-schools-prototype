@@ -7,9 +7,11 @@
  */
 
 const TABLES = [
-  // { table: 'provider_revisions', modelId: 'provider_id' },
-  // { table: 'school_revisions', modelId: 'school_id' },
-  // { table: 'placement_school_revisions', modelId: 'placement_school_id' },
+  { table: 'provider_revisions', modelId: 'provider_id' },
+  { table: 'school_revisions', modelId: 'school_id' },
+  { table: 'school_detail_revisions', modelId: 'school_detail_id' },
+  { table: 'school_address_revisions', modelId: 'school_address_id' },
+  { table: 'placement_school_revisions', modelId: 'placement_school_id' },
   { table: 'user_revisions', modelId: 'user_id' }
 ]
 
