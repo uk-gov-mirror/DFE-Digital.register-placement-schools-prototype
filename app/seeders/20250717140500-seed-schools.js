@@ -2,8 +2,8 @@ const fs = require('fs')
 const path = require('path')
 const { parse } = require('csv-parse/sync')
 
-// const createRevision = require('./helpers/createRevision')
-// const createActivityLog = require('./helpers/createActivityLog')
+const createRevision = require('./helpers/createRevision')
+const createActivityLog = require('./helpers/createActivityLog')
 const { nullIfEmpty } = require('../helpers/string')
 
 module.exports = {
@@ -12,10 +12,10 @@ module.exports = {
 
     try {
       await queryInterface.bulkDelete('schools', null, { transaction })
-      // await queryInterface.bulkDelete('school_revisions', null, { transaction })
-      // await queryInterface.bulkDelete('activity_logs', {
-      //   entity_type: 'school'
-      // }, { transaction })
+      await queryInterface.bulkDelete('school_revisions', null, { transaction })
+      await queryInterface.bulkDelete('activity_logs', {
+        entity_type: 'school'
+      }, { transaction })
 
       const csvPath = path.join(__dirname, '/data/seed-schools.csv')
       const csvContent = fs.readFileSync(csvPath, 'utf8')
@@ -31,7 +31,7 @@ module.exports = {
 
       for (const school of schools) {
         const schoolId = school.id
-        // const revisionNumber = 1
+        const revisionNumber = 1
 
         // Prepare base fields for both insert and revision
         const baseFields = {
@@ -55,42 +55,42 @@ module.exports = {
         await queryInterface.bulkInsert('schools', [baseFields], { transaction })
 
         // 2. Insert revision using helper
-        // const { id: _, ...revisionData } = baseFields
+        const { id: _, ...revisionData } = baseFields
 
-        // const revisionId = await createRevision({
-        //   revisionTable: 'school_revisions',
-        //   entityId: schoolId,
-        //   revisionData,
-        //   revisionNumber,
-        //   userId,
-        //   timestamp: createdAt
-        // }, queryInterface, transaction)
+        const revisionId = await createRevision({
+          revisionTable: 'school_revisions',
+          entityId: schoolId,
+          revisionData,
+          revisionNumber,
+          userId,
+          timestamp: createdAt
+        }, queryInterface, transaction)
 
         // 3. Insert activity log using helper
-        // await createActivityLog({
-        //   revisionTable: 'school_revisions',
-        //   revisionId,
-        //   entityType: 'school',
-        //   entityId: schoolId,
-        //   revisionNumber,
-        //   changedById: userId,
-        //   changedAt: createdAt
-        // }, queryInterface, transaction)
+        await createActivityLog({
+          revisionTable: 'school_revisions',
+          revisionId,
+          entityType: 'school',
+          entityId: schoolId,
+          revisionNumber,
+          changedById: userId,
+          changedAt: createdAt
+        }, queryInterface, transaction)
       }
 
       await transaction.commit()
     } catch (error) {
-      // console.error('school seeding error with revisions and activity logs:', error)
+      console.error('School seeding error with revisions and activity logs:', error)
       await transaction.rollback()
       throw error
     }
   },
 
   down: async (queryInterface, Sequelize) => {
-    // await queryInterface.bulkDelete('activity_logs', {
-    //   entity_type: 'school'
-    // })
-    // await queryInterface.bulkDelete('school_revisions', null, {})
+    await queryInterface.bulkDelete('activity_logs', {
+      entity_type: 'school'
+    })
+    await queryInterface.bulkDelete('school_revisions', null, {})
     await queryInterface.bulkDelete('schools', null, {})
   }
 }

@@ -3,8 +3,8 @@ const path = require('path')
 const { parse } = require('csv-parse/sync')
 const { v4: uuidv4 } = require('uuid')
 
-// const createRevision = require('./helpers/createRevision')
-// const createActivityLog = require('./helpers/createActivityLog')
+const createRevision = require('./helpers/createRevision')
+const createActivityLog = require('./helpers/createActivityLog')
 const { nullIfEmpty } = require('../helpers/string')
 
 module.exports = {
@@ -13,10 +13,10 @@ module.exports = {
 
     try {
       await queryInterface.bulkDelete('school_addresses', null, { transaction })
-      // await queryInterface.bulkDelete('school_address_revisions', null, { transaction })
-      // await queryInterface.bulkDelete('activity_logs', {
-      //   entity_type: 'school_address'
-      // }, { transaction })
+      await queryInterface.bulkDelete('school_address_revisions', null, { transaction })
+      await queryInterface.bulkDelete('activity_logs', {
+        entity_type: 'schoolAddress'
+      }, { transaction })
 
       const csvPath = path.join(__dirname, '/data/seed-schools.csv')
       const csvContent = fs.readFileSync(csvPath, 'utf8')
@@ -34,7 +34,7 @@ module.exports = {
         if (!school.address1 || !school.town || !school.postcode) continue
 
         const addressId = uuidv4()
-        // const revisionNumber = 1
+        const revisionNumber = 1
 
         const baseFields = {
           id: addressId,
@@ -57,43 +57,42 @@ module.exports = {
         await queryInterface.bulkInsert('school_addresses', [baseFields], { transaction })
 
         // 2. Insert revision
-        // const { id: _, ...revisionData } = baseFields
+        const { id: _, ...revisionData } = baseFields
 
-        // const revisionId = await createRevision({
-        //   revisionTable: 'school_address_revisions',
-        //   entityId: addressId,
-        //   revisionData,
-        //   revisionNumber,
-        //   userId,
-        //   timestamp: createdAt
-        // }, queryInterface, transaction)
+        const revisionId = await createRevision({
+          revisionTable: 'school_address_revisions',
+          entityId: addressId,
+          revisionData,
+          revisionNumber,
+          userId,
+          timestamp: createdAt
+        }, queryInterface, transaction)
 
         // 3. Insert activity log
-        // await createActivityLog({
-        //   revisionTable: 'school_address_revisions',
-        //   revisionId,
-        //   entityType: 'school_address',
-        //   entityId: addressId,
-        //   revisionNumber,
-        //   changedById: userId,
-        //   changedAt: createdAt
-        // }, queryInterface, transaction)
+        await createActivityLog({
+          revisionTable: 'school_address_revisions',
+          revisionId,
+          entityType: 'schoolAddress',
+          entityId: addressId,
+          revisionNumber,
+          changedById: userId,
+          changedAt: createdAt
+        }, queryInterface, transaction)
       }
 
       await transaction.commit()
     } catch (error) {
-      // console.error('school address seeding error with revisions and activity logs:', error)
-      console.error('school address seeding error:', error)
+      console.error('School address seeding error with revisions and activity logs:', error)
       await transaction.rollback()
       throw error
     }
   },
 
   down: async (queryInterface, Sequelize) => {
-    // await queryInterface.bulkDelete('activity_logs', {
-    //   entity_type: 'school_address'
-    // })
-    // await queryInterface.bulkDelete('school_address_revisions', null, {})
+    await queryInterface.bulkDelete('activity_logs', {
+      entity_type: 'schoolAddress'
+    })
+    await queryInterface.bulkDelete('school_address_revisions', null, {})
     await queryInterface.bulkDelete('school_addresses', null, {})
   }
 }

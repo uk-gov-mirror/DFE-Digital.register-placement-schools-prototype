@@ -2,8 +2,8 @@ const fs = require('fs')
 const path = require('path')
 const { parse } = require('csv-parse/sync')
 
-// const createRevision = require('./helpers/createRevision')
-// const createActivityLog = require('./helpers/createActivityLog')
+const createRevision = require('./helpers/createRevision')
+const createActivityLog = require('./helpers/createActivityLog')
 const { nullIfEmpty } = require('../helpers/string')
 
 module.exports = {
@@ -12,10 +12,10 @@ module.exports = {
 
     try {
       await queryInterface.bulkDelete('providers', null, { transaction })
-      // await queryInterface.bulkDelete('provider_revisions', null, { transaction })
-      // await queryInterface.bulkDelete('activity_logs', {
-      //   entity_type: 'provider'
-      // }, { transaction })
+      await queryInterface.bulkDelete('provider_revisions', null, { transaction })
+      await queryInterface.bulkDelete('activity_logs', {
+        entity_type: 'provider'
+      }, { transaction })
 
       const csvPath = path.join(__dirname, '/data/seed-providers.csv')
       const csvContent = fs.readFileSync(csvPath, 'utf8')
@@ -31,7 +31,7 @@ module.exports = {
 
       for (const provider of providers) {
         const providerId = provider.id
-        // const revisionNumber = 1
+        const revisionNumber = 1
 
         // Prepare base fields for both insert and revision
         const baseFields = {
@@ -53,43 +53,42 @@ module.exports = {
         await queryInterface.bulkInsert('providers', [baseFields], { transaction })
 
         // 2. Insert revision using helper
-        // const { id: _, ...revisionData } = baseFields
+        const { id: _, ...revisionData } = baseFields
 
-        // const revisionId = await createRevision({
-        //   revisionTable: 'provider_revisions',
-        //   entityId: providerId,
-        //   revisionData,
-        //   revisionNumber,
-        //   userId,
-        //   timestamp: createdAt
-        // }, queryInterface, transaction)
+        const revisionId = await createRevision({
+          revisionTable: 'provider_revisions',
+          entityId: providerId,
+          revisionData,
+          revisionNumber,
+          userId,
+          timestamp: createdAt
+        }, queryInterface, transaction)
 
         // 3. Insert activity log using helper
-        // await createActivityLog({
-        //   revisionTable: 'provider_revisions',
-        //   revisionId,
-        //   entityType: 'provider',
-        //   entityId: providerId,
-        //   revisionNumber,
-        //   changedById: userId,
-        //   changedAt: createdAt
-        // }, queryInterface, transaction)
+        await createActivityLog({
+          revisionTable: 'provider_revisions',
+          revisionId,
+          entityType: 'provider',
+          entityId: providerId,
+          revisionNumber,
+          changedById: userId,
+          changedAt: createdAt
+        }, queryInterface, transaction)
       }
 
       await transaction.commit()
     } catch (error) {
-      // console.error('Provider seeding error with revisions and activity logs:', error)
-      console.error('Provider seeding error:', error)
+      console.error('Provider seeding error with revisions and activity logs:', error)
       await transaction.rollback()
       throw error
     }
   },
 
   down: async (queryInterface, Sequelize) => {
-    // await queryInterface.bulkDelete('activity_logs', {
-    //   entity_type: 'provider'
-    // })
-    // await queryInterface.bulkDelete('provider_revisions', null, {})
+    await queryInterface.bulkDelete('activity_logs', {
+      entity_type: 'provider'
+    })
+    await queryInterface.bulkDelete('provider_revisions', null, {})
     await queryInterface.bulkDelete('providers', null, {})
   }
 }
