@@ -90,7 +90,10 @@ router.all('*', (req, res, next) => {
 /// AUTHENTICATION ROUTES
 /// ------------------------------------------------------------------------ ///
 router.get('/auth/sign-in', authenticationController.signIn_get)
-router.post('/auth/sign-in', authenticationController.signIn_post)
+router.get('/auth/sign-in/email', authenticationController.signInEmail_get)
+router.post('/auth/sign-in/email', authenticationController.signInEmail_post)
+router.get('/auth/sign-in/password', authenticationController.signInPassword_get)
+router.post('/auth/sign-in/password', authenticationController.signInPassword_post)
 router.get('/auth/persona', authenticationController.persona_get)
 router.post('/auth/persona', authenticationController.persona_post)
 router.get('/auth/sign-out', authenticationController.signOut_get)
