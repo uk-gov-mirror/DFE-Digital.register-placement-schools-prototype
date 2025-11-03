@@ -26,7 +26,8 @@ The prototype is built using the [GOV.UK Prototype Kit](https://prototype-kit.se
 - **Passport.js** (v0.7.0) - Authentication middleware
 - **Passport Local** (v1.0.0) - Local username/password strategy
 - **bcrypt** (v6.0.0) - Password hashing
-- **express-session** (v1.18.2) - Session management
+- **express-session** (v1.18.2) - Session management for Passport (also included by Prototype Kit)
+- **connect-flash** (v0.1.1) - Flash messaging for user feedback
 
 ### Template engine
 
@@ -136,11 +137,15 @@ The application implements data versioning:
 
 ### Authentication flow
 
-1. User submits credentials via login form
+1. User submits credentials via login form (or selects persona if `USE_SIGN_IN_FORM=false`)
 2. Passport.js validates against User model
-3. bcrypt verifies hashed password
-4. express-session maintains authenticated state
-5. Routes are protected via authentication middleware
+3. bcrypt verifies hashed password (for form-based login)
+4. Passport serializes user ID to session via `passport.serializeUser()`
+5. Session cookie maintains authenticated state
+6. On subsequent requests, Passport deserializes user from session via `passport.deserializeUser()`
+7. Routes are protected via authentication middleware (`req.isAuthenticated()`)
+
+See [Session management](#session-management) for details on how authentication sessions work.
 
 ### Search functionality
 
@@ -163,9 +168,35 @@ The application uses environment variables for configuration:
 
 ## Session management
 
-- Sessions are stored in-memory (default for Prototype Kit)
-- Session data includes authenticated user information
-- Flash messages for user feedback (via connect-flash)
+The application uses sessions in two ways:
+
+### Prototype Kit sessions
+
+The GOV.UK Prototype Kit includes express-session by default and provides `req.session.data` for storing prototype form data and user journey information. This is the standard way to persist data across pages in a prototype.
+
+### Authentication sessions
+
+For user authentication with Passport.js, the application explicitly configures express-session in `app/routes.js` with specific security settings:
+
+- **Session storage**: In-memory (default)
+- **Session secret**: Configured via `SESSION_SECRET` environment variable
+- **Cookie settings**:
+  - `maxAge`: 4 hours
+  - `secure`: true in production (HTTPS only)
+  - `httpOnly`: true (prevents client-side JavaScript access)
+- **Session data**: Stores serialized user ID via Passport
+
+### How they coexist
+
+Both session approaches work together:
+
+- `req.session.data` - Used by Prototype Kit for storing prototype form data
+- `req.session` - Used directly by Passport.js for authentication state and temporary data (e.g., `req.session.email` during sign-in flow, `req.session.returnTo` for post-login redirects)
+- `req.user` - Populated by Passport after deserialization, contains the authenticated user object
+
+### Flash messages
+
+The application uses connect-flash for displaying one-time messages to users (e.g., success/error notifications). Flash messages are stored in the session and automatically cleared after being displayed.
 
 ## Frontend architecture
 
@@ -191,13 +222,14 @@ The application uses environment variables for configuration:
 
 ### Production considerations
 
-- For production deployment, consider:
-  - Switching to PostgreSQL or MySQL
-  - External session store (Redis, database)
-  - Environment-based configuration
-  - Production-grade authentication
-  - API rate limiting
-  - Error monitoring
+For production deployment, consider:
+
+- **Database**: Switch from SQLite to PostgreSQL or MySQL for persistence and reliability
+- **Session store**: Use external session store (Redis, database) instead of in-memory sessions. In-memory sessions don't persist across server restarts and don't work with multiple server instances (e.g., multiple Heroku dynos)
+- **Configuration**: Use environment-based configuration for all secrets and API keys
+- **Authentication**: Review authentication implementation for production security requirements
+- **Rate limiting**: Add API rate limiting to prevent abuse
+- **Monitoring**: Implement error monitoring and logging (e.g., Sentry, LogDNA)
 
 ## Extension points
 

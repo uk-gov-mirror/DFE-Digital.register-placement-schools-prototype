@@ -63,6 +63,12 @@ rm -f app/database/development.sqlite
 npm run db:build
 ```
 
+### Session management
+
+For local development, the application uses in-memory session storage, which is sufficient for a single developer working locally. Sessions will be cleared when you restart the server.
+
+**Note:** For Heroku deployments or multi-user environments, you'll need to configure an external session store (Redis or database). See the [Heroku deployment](#session-storage-on-heroku) section for details.
+
 ### Environment variables explained
 
 | Variable | Required | Description |
@@ -192,6 +198,59 @@ Use PostgreSQL instead:
    heroku run npm run db:build
    ```
 
+### Session storage on Heroku
+
+By default, this application stores sessions in-memory, which has limitations:
+
+- Sessions are lost when dynos restart (at least once per day)
+- Sessions don't work correctly with multiple dynos
+- Users will be logged out unexpectedly
+
+**For production or shared demo environments, use an external session store:**
+
+#### Option 1: Redis (recommended)
+
+1. **Add Heroku Redis**
+   ```bash
+   heroku addons:create heroku-redis:mini
+   ```
+
+2. **Install Redis session store**
+   ```bash
+   npm install connect-redis redis
+   ```
+
+3. **Update session configuration** in `app/routes.js`:
+   ```javascript
+   const session = require('express-session')
+   const RedisStore = require('connect-redis').default
+   const { createClient } = require('redis')
+
+   // Create Redis client
+   const redisClient = createClient({
+     url: process.env.REDIS_URL
+   })
+   redisClient.connect().catch(console.error)
+
+   router.use(
+     session({
+       store: new RedisStore({ client: redisClient }),
+       secret: process.env.SESSION_SECRET || 'default-insecure-secret-change-in-production',
+       resave: false,
+       saveUninitialized: false,
+       cookie: {
+         maxAge: 1000 * 60 * 60 * 4, // 4 hours
+         secure: process.env.NODE_ENV === 'production',
+         httpOnly: true
+       }
+     })
+   )
+   ```
+
+#### Option 2: Database sessions
+
+Alternatively, use `connect-session-sequelize` to store sessions in your PostgreSQL database (simpler but slower than Redis).
+
 ### Viewing logs
 
 Monitor your Heroku application:
@@ -211,8 +270,11 @@ heroku logs --tail
 - Check database connection: `heroku pg:info` (if using PostgreSQL)
 
 **Session issues:**
-- Ensure `SESSION_SECRET` is set
-- For production, consider using an external session store (Redis)
+- Ensure `SESSION_SECRET` is set: `heroku config:get SESSION_SECRET`
+- Users getting logged out unexpectedly: In-memory sessions (default) don't persist across dyno restarts or when using multiple dynos
+- For production or apps with multiple dynos, use an external session store:
+  - Redis via Heroku Redis add-on: `heroku addons:create heroku-redis:mini`
+  - Configure session store in `app/routes.js` to use Redis or database-backed sessions
 
 ## Continuous deployment
 
