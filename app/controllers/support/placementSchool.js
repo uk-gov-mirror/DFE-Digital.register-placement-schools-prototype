@@ -309,11 +309,18 @@ exports.placementSchoolsList = async (req, res) => {
     where: wherePlacementSchool
   })
 
-  // Step 3: get latest academic year for each school
+  // Step 3: get latest academic year for each school based on code
   const latestAcademicYears = await PlacementSchool.findAll({
     attributes: [
       'schoolId',
-      [Sequelize.fn('MAX', Sequelize.col('academic_year_id')), 'latestAcademicYearId']
+      [Sequelize.fn('MAX', Sequelize.col('academicYear.code')), 'latestAcademicYearCode']
+    ],
+    include: [
+      {
+        model: AcademicYear,
+        as: 'academicYear',
+        attributes: []
+      }
     ],
     where: {
       schoolId: { [Op.in]: pageSchoolIds },
@@ -323,10 +330,32 @@ exports.placementSchoolsList = async (req, res) => {
     raw: true
   })
 
-  // Turn into a lookup (schoolId -> latest academicYearId)
-  const schoolToLatestYear = {}
+  // Turn into a lookup (schoolId -> latest academicYearCode)
+  const schoolToLatestYearCode = {}
   latestAcademicYears.forEach(row => {
-    schoolToLatestYear[row.schoolId] = row.latestAcademicYearId
+    schoolToLatestYearCode[row.schoolId] = row.latestAcademicYearCode
+  })
+
+  // Now get the academic year IDs for those codes
+  const latestYearCodes = [...new Set(Object.values(schoolToLatestYearCode))]
+  const academicYears = await AcademicYear.findAll({
+    where: {
+      code: { [Op.in]: latestYearCodes }
+    },
+    attributes: ['id', 'code'],
+    raw: true
+  })
+
+  // Create a lookup (code -> academicYearId)
+  const codeToYearId = {}
+  academicYears.forEach(year => {
+    codeToYearId[year.code] = year.id
+  })
+
+  // Create final lookup (schoolId -> latest academicYearId)
+  const schoolToLatestYear = {}
+  Object.entries(schoolToLatestYearCode).forEach(([schoolId, code]) => {
+    schoolToLatestYear[schoolId] = codeToYearId[code]
   })
 
   // Step 4: fetch only latest academic year rows for those schools

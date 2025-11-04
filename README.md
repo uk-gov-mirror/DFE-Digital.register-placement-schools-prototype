@@ -9,37 +9,10 @@ This prototype is based on the:
 
 You can read more about this register on the [design history website](https://becoming-a-teacher.design-history.education.gov.uk/register-of-placement-schools/).
 
-## Requirements
+## Documentation
 
-- Node.js - version 22.x.x
-
-## Installation
-
-- Clone this repository to a folder on your computer
-- Open Terminal
-- In Terminal, change the path to the repository
-- Type `npm install` to install the dependencies
-
-## Working locally
-
-- In Terminal, change the path to the repository
-- Type `npm run dev`  and start the application
-
-## Generating data
-
-TBC
-
-## Environment variables
-
-The prototype uses environment variables to help configure the application. These include:
-
-| Variable | Type | Description |
-| --- | --- | --- |
-| `ORDNANCE_SURVEY_API_KEY` | string | The API key needed to access the Ordnance Survey Places API |
-| `ORDNANCE_SURVEY_API_SECRET` | string | The API secret needed to access the Ordnance Survey Places API |
-| `GOOGLE_MAPS_API_KEY` | string | The API key needed to access the Google Maps API |
-| `SESSION_SECRET` | string | A random secret used in user authentication |
-| `USE_SIGN_IN_FORM` | string | Use to turn on/off username and password login. If set to `false`, the login screen displays a list of test personas. Values: `true` or `false` |
+- [Architecture](ARCHITECTURE.md) - Technical architecture and application structure
+- [Deployment](DEPLOYMENT.md) - Local and Heroku deployment instructions
 
 ## Tools
 
